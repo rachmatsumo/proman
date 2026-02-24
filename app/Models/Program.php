@@ -26,4 +26,11 @@ class Program extends Model
     {
         return $this->hasMany(SubProgram::class)->orderBy('sort_order', 'asc');
     }
+
+    public function members()
+    {
+        return $this->belongsToMany(User::class, 'program_user')
+                    ->withPivot('role')
+                    ->withTimestamps();
+    }
 }

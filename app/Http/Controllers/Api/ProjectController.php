@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Program;
+use App\Models\SubProgram;
+use App\Models\Milestone;
 use App\Models\Activity;
 
 class ProjectController extends Controller
@@ -126,5 +128,37 @@ class ProjectController extends Controller
         });
         
         return response()->json($events);
+    }
+
+    /**
+     * Update task date from Gantt Chart
+     */
+    public function updateGanttTask(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|string',
+            'start' => 'required|date_format:Y-m-d',
+            'end' => 'required|date_format:Y-m-d',
+        ]);
+
+        $idString = $request->id;
+        $start = $request->start;
+        $end = $request->end;
+
+        if (strpos($idString, 'prog_') === 0) {
+            $id = str_replace('prog_', '', $idString);
+            Program::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+        } elseif (strpos($idString, 'sub_') === 0) {
+            $id = str_replace('sub_', '', $idString);
+            SubProgram::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+        } elseif (strpos($idString, 'ms_') === 0) {
+            $id = str_replace('ms_', '', $idString);
+            Milestone::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+        } elseif (strpos($idString, 'act_') === 0) {
+            $id = str_replace('act_', '', $idString);
+            Activity::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

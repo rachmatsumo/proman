@@ -76,4 +76,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function programs()
+    {
+        return $this->belongsToMany(Program::class, 'program_user')
+                    ->withPivot('role')
+                    ->withTimestamps();
+    }
 }

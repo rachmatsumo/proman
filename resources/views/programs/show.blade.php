@@ -19,6 +19,15 @@
 
 @section('content')
 @php
+    $currentUser = auth()->user();
+    $userPivot = $program->members()->where('user_id', $currentUser->id)->first();
+    $userRole = 'none';
+    if ($currentUser->id == 1 || $currentUser->isAdmin()) {
+        $userRole = 'administrator';
+    } elseif ($userPivot) {
+        $userRole = $userPivot->pivot->role;
+    }
+
     $allActivities = $program->subPrograms->flatMap(fn($s) => $s->milestones->flatMap(fn($m) => $m->activities));
     $totalActs = $allActivities->count();
     $doneActs  = $allActivities->where('progress', 100)->count();
@@ -127,19 +136,24 @@
                     </div>
                     <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
                         {{-- Edit Program --}}
+                        @if($userRole === 'administrator' || $userRole === 'manager')
                         <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
                                 style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white;"
                                 onclick="openEditProgram({{ $program->id }}, '{{ addslashes($program->name) }}', '{{ addslashes($program->description ?? '') }}', '{{ $program->start_date ? $program->start_date->format('Y-m-d') : '' }}', '{{ $program->end_date ? $program->end_date->format('Y-m-d') : '' }}')"
                                 data-bs-toggle="modal" data-bs-target="#modalEditProgram">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
+                        @endif
                         {{-- Add Sub Program --}}
+                        @if($userRole === 'administrator' || $userRole === 'manager')
                         <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
                                 style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;"
                                 data-bs-toggle="modal" data-bs-target="#modalAddSubProgram">
                             <i class="fa-solid fa-plus"></i> Sub Program
                         </button>
+                        @endif
                         {{-- Delete Program --}}
+                        @if($userRole === 'administrator')
                         <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="return confirm('Hapus program ini secara permanen?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
@@ -147,6 +161,7 @@
                                 <i class="fa-solid fa-trash-can"></i> Delete
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
                 <div class="row g-3 mt-2">
@@ -271,6 +286,12 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="member-tab" data-bs-toggle="pill" data-bs-target="#member" type="button" role="tab" aria-controls="member" aria-selected="false" style="transition: all 0.2s;">
+                <i class="fa-solid fa-users-gear"></i> Members
+                <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $program->members->count() }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="riwayat-tab" data-bs-toggle="pill" data-bs-target="#riwayat" type="button" role="tab" aria-controls="riwayat" aria-selected="false" style="transition: all 0.2s;">
                 <i class="fa-solid fa-clock-rotate-left"></i> History
             </button>
@@ -308,6 +329,14 @@
                 </button>
             </div>
         </div>
+        
+        <div id="noHierarchyResults" class="text-center py-5 d-none">
+            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                <i class="fa-solid fa-magnifying-glass text-muted fs-4"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">No results found</h5>
+            <p class="text-muted small">No activities or milestones match your search term.</p>
+        </div>
 
         @forelse($program->subPrograms as $sub)
         @php
@@ -319,9 +348,11 @@
             {{-- Sub Program Header --}}
             <div class="card-header px-4 py-3 d-flex justify-content-between align-items-center gap-3"
                  style="background: linear-gradient(to right, #1e3a5f, #1d4ed8); border: none;">
+                @if($userRole === 'administrator' || $userRole === 'manager')
                 <div class="sub-drag-handle py-2" style="cursor: grab;">
                     <i class="fa-solid fa-grip-vertical text-white opacity-50"></i>
                 </div>
+                @endif
                 <div class="d-flex align-items-center gap-3 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSub{{ $sub->id }}" aria-expanded="true">
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 36px; height: 36px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);">
@@ -359,6 +390,7 @@
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-shrink-0">
                     {{-- Edit Sub Program --}}
+                    @if($userRole === 'administrator' || $userRole === 'manager')
                     <button type="button"
                             class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
                             style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
@@ -366,6 +398,7 @@
                             onclick="openEditSubProgram({{ $sub->id }}, {{ $program->id }}, '{{ addslashes($sub->name) }}', '{{ $sub->bobot ?? '' }}', '{{ addslashes($sub->description ?? '') }}', '{{ $sub->start_date ? $sub->start_date->format('Y-m-d') : '' }}', '{{ $sub->end_date ? $sub->end_date->format('Y-m-d') : '' }}')">
                         <i class="fa-solid fa-pen-to-square"></i> Edit
                     </button>
+                    @endif
                     {{-- Attachments Sub Program --}}
                     <button type="button"
                             class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
@@ -378,6 +411,7 @@
                         @endif
                     </button>
                     {{-- Add Milestone --}}
+                    @if($userRole === 'administrator' || $userRole === 'manager')
                     <button type="button"
                             class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
                             style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
@@ -385,7 +419,9 @@
                             onclick="setMilestoneSubProgram({{ $sub->id }}, '{{ addslashes($sub->name) }}')">
                         <i class="fa-solid fa-plus"></i> Milestone
                     </button>
+                    @endif
                     {{-- Delete Sub Program --}}
+                    @if($userRole === 'administrator')
                     <form action="{{ route('sub_programs.destroy', $sub->id) }}" method="POST" onsubmit="return confirm('Hapus sub program ini?')">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-sm d-flex align-items-center gap-1 px-2"
@@ -393,6 +429,7 @@
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
 
@@ -409,9 +446,11 @@
                 @endphp
                 <div class="card border-0 shadow-sm overflow-hidden milestone-card mb-3" data-name="{{ strtolower($ms->name) }}" data-id="{{ $ms->id }}">
                     <div class="px-3 py-2 d-flex justify-content-between align-items-center" style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                        @if($userRole === 'administrator' || $userRole === 'manager')
                         <div class="ms-drag-handle py-1 px-1 me-1" style="cursor: grab;">
                             <i class="fa-solid fa-grip-vertical text-muted opacity-50"></i>
                         </div>
+                        @endif
                         <div class="d-flex align-items-center gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="true">
                             <div class="rounded-2 d-flex align-items-center justify-content-center transition-transform icon-collapse"
                                  style="width: 28px; height: 28px; background: #dbeafe; border: 1px solid #bfdbfe;" id="iconMs{{ $ms->id }}">
@@ -449,6 +488,7 @@
                             </span>
                             @endif
                             {{-- Edit Milestone --}}
+                            @if($userRole === 'administrator' || $userRole === 'manager')
                             <button type="button"
                                     class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
                                     style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;"
@@ -456,6 +496,7 @@
                                     onclick="openEditMilestone({{ $ms->id }}, {{ $ms->sub_program_id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}')">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
+                            @endif
                             {{-- Attachments Milestone --}}
                             <button type="button"
                                     class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
@@ -468,6 +509,7 @@
                                 @endif
                             </button>
                             {{-- Add Activity --}}
+                            @if($userRole === 'administrator' || $userRole === 'manager')
                             <button type="button"
                                     class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
                                     style="background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; font-size: 0.68rem;"
@@ -475,13 +517,16 @@
                                     onclick="setActivityMilestone({{ $ms->id }}, '{{ addslashes($ms->name) }}')">
                                 <i class="fa-solid fa-plus"></i> Activity
                             </button>
+                            @endif
                             {{-- Delete Milestone --}}
+                            @if($userRole === 'administrator')
                             <form action="{{ route('milestones.destroy', $ms->id) }}" method="POST" onsubmit="return confirm('Hapus milestone ini?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;">
                                     <i class="fa-solid fa-times"></i>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </div>
 
@@ -522,7 +567,9 @@
                                 <tr class="activity-item" data-name="{{ strtolower($act->name) }}" data-id="{{ $act->id }}">
                                     <td class="px-4 py-2">
                                         <div class="d-flex align-items-center">
+                                            @if($userRole === 'administrator' || $userRole === 'manager')
                                             <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 act-drag-handle" style="cursor: grab;"></i>
+                                            @endif
                                             <div>
                                                 <div class="fw-semibold text-dark"><span class="act-num">{{ $loop->parent->parent->iteration }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $act->name }}</div>
                                                 @if($act->description)
@@ -581,6 +628,7 @@
                                     <td class="px-2 py-2 text-center">
                                         <div class="d-flex gap-1 justify-content-center">
                                             {{-- Edit Activity --}}
+                                            @if($userRole === 'administrator' || $userRole === 'manager')
                                             <button type="button" class="btn btn-sm p-1 px-2"
                                                     style="color: #4338ca; background: #e0e7ff; border: 1px solid #c7d2fe; font-size: 0.7rem;"
                                                     title="Edit"
@@ -588,13 +636,16 @@
                                                     onclick="openEditActivity({{ $act->id }}, {{ $act->milestone_id }}, '{{ addslashes($act->name) }}', '{{ $act->bobot ?? '' }}', '{{ addslashes($act->description ?? '') }}', '{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}', '{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}', {{ $act->progress }}, '{{ $act->status }}', '{{ addslashes($act->uic ?? '') }}', '{{ addslashes($act->pic ?? '') }}')">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
+                                            @endif
                                             {{-- Delete Activity --}}
+                                            @if($userRole === 'administrator')
                                             <form action="{{ route('activities.destroy', $act->id) }}" method="POST" onsubmit="return confirm('Hapus activity ini?')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm p-1 px-2 text-danger" style="background: #fef2f2; border: 1px solid #fecaca; font-size: 0.7rem;" title="Delete">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endif
                                             {{-- Attachments Activity --}}
                                             <button type="button"
                                                     class="position-relative btn btn-sm px-2 py-1 d-inline-flex flex-row align-items-center justify-content-center text-nowrap"
@@ -824,7 +875,172 @@
                 @endif
             </div>
         </div>
+        {{-- TAB 6: MEMBERS --}}
+        <div class="tab-pane fade" id="member" role="tabpanel" aria-labelledby="member-tab">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-light">
+                    <h5 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">
+                        <i class="fa-solid fa-users text-primary me-2"></i>Project Members
+                    </h5>
+                    @if($userRole === 'administrator' || $userRole === 'manager')
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                            <i class="fa-solid fa-user-plus me-1"></i> Add Member
+                        </button>
+                    @endif
+                </div>
+                <div class="card-body p-0" style="overflow: visible !important;">
+                    <div class="table-responsive" style="overflow: visible;">
+                        <table class="table table-hover align-middle mb-5">
+                            <thead class="bg-light bg-opacity-50">
+                                <tr>
+                                    <th class="ps-4 border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">User</th>
+                                    <th class="border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Role in Project</th>
+                                    <th class="border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Joined Date</th>
+                                    <th class="pe-4 border-0 text-end text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($program->members as $member)
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="flex-shrink-0">
+                                                    @if($member->avatar)
+                                                        <img src="{{ asset($member->avatar) }}" class="rounded-circle border border-2 border-white shadow-sm" style="width: 38px; height: 38px; object-fit: cover;">
+                                                    @else
+                                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 38px; height: 38px; font-size: 0.8rem; border: 2px solid white;">
+                                                            {{ strtoupper(substr($member->name, 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark mb-0" style="font-size: 0.85rem;">{{ $member->name }}</div>
+                                                    <div class="text-muted" style="font-size: 0.75rem;">{{ $member->email }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @php
+                                                $badgeColor = match($member->pivot->role) {
+                                                    'administrator' => 'bg-danger',
+                                                    'manager' => 'bg-warning text-dark',
+                                                    default => 'bg-info',
+                                                };
+                                            @endphp
+                                            <span class="badge {{ $badgeColor }} rounded-pill px-3 py-1 fw-medium" style="font-size: 0.7rem;">
+                                                {{ ucfirst($member->pivot->role) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-muted small">
+                                            {{ $member->pivot->created_at->format('M d, Y') }}
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            @if(($userRole === 'administrator' || $userRole === 'manager') && $member->id != 1)
+                                                <div class="d-flex justify-content-end gap-2">
+                                                    {{-- Change Role --}}
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-light border p-1 px-2" data-bs-toggle="dropdown" data-bs-boundary="viewport">
+                                                            <i class="fa-solid fa-user-shield text-muted"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
+                                                            <form action="{{ route('programs.members.update', [$program, $member]) }}" method="POST">
+                                                                @csrf @method('PUT')
+                                                                <button type="submit" name="role" value="administrator" class="dropdown-item py-2 d-flex align-items-center gap-2 {{ $member->pivot->role === 'administrator' ? 'active' : '' }}">
+                                                                    <span class="p-1 bg-danger rounded-circle" style="width:8px;height:8px;"></span> Administrator
+                                                                </button>
+                                                                <button type="submit" name="role" value="manager" class="dropdown-item py-2 d-flex align-items-center gap-2 {{ $member->pivot->role === 'manager' ? 'active' : '' }}">
+                                                                    <span class="p-1 bg-warning rounded-circle" style="width:8px;height:8px;"></span> Manager
+                                                                </button>
+                                                                <button type="submit" name="role" value="member" class="dropdown-item py-2 d-flex align-items-center gap-2 {{ $member->pivot->role === 'member' ? 'active' : '' }}">
+                                                                    <span class="p-1 bg-info rounded-circle" style="width:8px;height:8px;"></span> Member
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                    {{-- Remove --}}
+                                                    <form action="{{ route('programs.members.destroy', [$program, $member]) }}" method="POST" onsubmit="return confirm('Remove member?')">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-light border p-1 px-2 text-danger">
+                                                            <i class="fa-solid fa-user-minus"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>{{-- End Tab Content --}}
+
+    {{-- ADD MEMBER MODAL --}}
+    @if($userRole === 'administrator' || $userRole === 'manager')
+    <div class="modal fade" id="addMemberModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <form action="{{ route('programs.members.store', $program->id) }}" method="POST">
+                    @csrf
+                    <div class="modal-header border-bottom border-light p-4">
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center">
+                            <i class="fa-solid fa-user-plus text-primary me-2"></i> Add Team Member
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark small mb-2 text-uppercase opacity-50">Select User</label>
+                            <select name="user_id" class="form-select border-0 bg-light shadow-none py-2 px-3 rounded-3" required>
+                                <option value="" disabled selected>Choose a user...</option>
+                                @foreach($allUsers as $u)
+                                    @if(!$program->members->contains($u->id))
+                                        <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold text-dark small mb-2 text-uppercase opacity-50">Assign Role</label>
+                            <div class="d-flex flex-column gap-2">
+                                <label class="p-3 bg-light rounded-3 cursor-pointer d-flex align-items-center gap-3 transition-all role-option">
+                                    <input type="radio" name="role" value="member" checked class="form-check-input mt-0">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-dark small">Member</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">Can view projects and add attachments.</div>
+                                    </div>
+                                    <i class="fa-solid fa-user text-info"></i>
+                                </label>
+                                <label class="p-3 bg-light rounded-3 cursor-pointer d-flex align-items-center gap-3 transition-all role-option">
+                                    <input type="radio" name="role" value="manager" class="form-check-input mt-0">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-dark small">Manager</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">Can edit activities, milestones, and manage members.</div>
+                                    </div>
+                                    <i class="fa-solid fa-user-tie text-warning"></i>
+                                </label>
+                                <label class="p-3 bg-light rounded-3 cursor-pointer d-flex align-items-center gap-3 transition-all role-option">
+                                    <input type="radio" name="role" value="administrator" class="form-check-input mt-0">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold text-dark small">Administrator</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">Full project control, including deletion and settings.</div>
+                                    </div>
+                                    <i class="fa-solid fa-user-shield text-danger"></i>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-light p-4 pt-3">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-medium text-muted" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">Add to Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>{{-- End Container --}}
 
 {{-- ============================================================
@@ -1770,6 +1986,21 @@ document.getElementById('hierarchySearch')?.addEventListener('input', function(e
             sub.style.display = 'none';
         }
     });
+
+    // Handle "No result found" message
+    let anyVisible = false;
+    document.querySelectorAll('.sub-card').forEach(sub => {
+        if (sub.style.display !== 'none') anyVisible = true;
+    });
+
+    let noResultsEl = document.getElementById('noHierarchyResults');
+    if (noResultsEl) {
+        if (!anyVisible && term !== '') {
+            noResultsEl.classList.remove('d-none');
+        } else {
+            noResultsEl.classList.add('d-none');
+        }
+    }
 });
 </script>
 @endpush

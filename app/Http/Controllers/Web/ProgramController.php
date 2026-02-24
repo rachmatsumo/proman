@@ -29,6 +29,7 @@ class ProgramController extends Controller
     public function show(string $id)
     {
         $program = Program::with([
+            'members',
             'subPrograms.attachments',
             'subPrograms.activityLogs',
             'subPrograms.milestones.attachments',
@@ -36,6 +37,8 @@ class ProgramController extends Controller
             'subPrograms.milestones.activities.attachments',
             'subPrograms.milestones.activities.activityLogs',
         ])->findOrFail($id);
+
+        $allUsers = \App\Models\User::all();
 
         $logs = collect();
         foreach ($program->subPrograms as $sub) {
@@ -49,7 +52,7 @@ class ProgramController extends Controller
         }
         $activityLogs = $logs->sortByDesc('created_at')->values();
 
-        return view('programs.show', compact('program', 'activityLogs'));
+        return view('programs.show', compact('program', 'activityLogs', 'allUsers'));
     }
 
     public function edit(string $id)

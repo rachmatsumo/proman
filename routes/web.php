@@ -51,5 +51,10 @@ Route::middleware('auth')->group(function () {
 
     // User Management
     Route::resource('users', App\Http\Controllers\UserController::class);
+
+    // Program Member Management
+    Route::post('programs/{program}/members', [App\Http\Controllers\Web\ProgramMemberController::class, 'store'])->name('programs.members.store');
+    Route::put('programs/{program}/members/{user}', [App\Http\Controllers\Web\ProgramMemberController::class, 'update'])->name('programs.members.update');
+    Route::delete('programs/{program}/members/{user}', [App\Http\Controllers\Web\ProgramMemberController::class, 'destroy'])->name('programs.members.destroy');
 });
 

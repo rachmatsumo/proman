@@ -73,7 +73,6 @@
                 let ganttOptions = {
                     view_mode: 'Day',
                     date_format: 'YYYY-MM-DD',
-                    // Default padding is kept so the grid renders securely
                     custom_popup_html: function(task) {
                         return `
                             <div class="p-3 bg-white rounded shadow border text-sm" style="min-width: 200px; font-size: 0.85rem;">
@@ -88,6 +87,20 @@
                                 </div>
                             </div>
                         `;
+                    },
+                    on_date_change: function(task, start, end) {
+                        fetch('/api/projects/gantt/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                id: task.id,
+                                start: start.toISOString().split('T')[0],
+                                end: end.toISOString().split('T')[0]
+                            })
+                        }).catch(error => console.error('Error updating task:', error));
                     }
                 };
                 

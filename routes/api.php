@@ -10,5 +10,6 @@ Route::get('/user', function (Request $request) {
 
 Route::prefix('projects')->group(function () {
     Route::get('/gantt', [ProjectController::class, 'getGanttData']);
+    Route::post('/gantt/update', [ProjectController::class, 'updateGanttTask']);
     Route::get('/calendar', [ProjectController::class, 'getCalendarData']);
 });
