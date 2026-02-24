@@ -23,7 +23,8 @@ class Activity extends Model
         'progress',
         'status', // Manual Status
         'uic',
-        'pic'
+        'pic',
+        'sort_order',
     ];
 
     protected $casts = [
@@ -31,6 +32,7 @@ class Activity extends Model
         'end_date' => 'date',
         'progress' => 'integer',
         'bobot' => 'float',
+        'sort_order' => 'integer',
     ];
 
     protected $appends = ['system_status'];

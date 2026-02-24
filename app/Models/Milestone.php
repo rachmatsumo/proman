@@ -19,12 +19,14 @@ class Milestone extends Model
         'bobot',
         'start_date',
         'end_date',
+        'sort_order',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'bobot' => 'float',
+        'sort_order' => 'integer',
     ];
 
     public function subProgram()
@@ -34,7 +36,7 @@ class Milestone extends Model
 
     public function activities()
     {
-        return $this->hasMany(Activity::class);
+        return $this->hasMany(Activity::class)->orderBy('sort_order', 'asc');
     }
 
     public function attachments()

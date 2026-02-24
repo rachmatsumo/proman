@@ -100,7 +100,7 @@
     {{-- ===== PROGRAM HERO ===== --}}
     <div class="rounded-3 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, #1e1b4b, #312e81, #4f46e5);">
         <div class="p-4 p-md-5 position-relative text-white">
-            <div class="position-absolute top-0 end-0 opacity-50 pe-4 pt-3" style="font-size: 8rem; line-height: 1;">
+            <div class="position-absolute top-0 end-0 pe-4 pt-3" style="font-size: 14rem; line-height: 1;opacity:.2">
                 <i class="fa-solid fa-diagram-project"></i>
             </div>
             <div class="position-relative">
@@ -265,14 +265,14 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen" type="button" role="tab" aria-controls="dokumen" aria-selected="false" style="transition: all 0.2s;">
-                <i class="fa-solid fa-folder-open"></i> Dokumen
+                <i class="fa-solid fa-folder-open"></i> Document
                 @php $totalAttachments = collect($attachmentsData)->pluck('attachments')->flatten(1)->count(); @endphp
                 <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $totalAttachments ?? 0 }}</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="riwayat-tab" data-bs-toggle="pill" data-bs-target="#riwayat" type="button" role="tab" aria-controls="riwayat" aria-selected="false" style="transition: all 0.2s;">
-                <i class="fa-solid fa-clock-rotate-left"></i> Riwayat
+                <i class="fa-solid fa-clock-rotate-left"></i> History
             </button>
         </li>
     </ul>
@@ -289,7 +289,7 @@
     <div class="tab-content" id="programTabsContent">
         {{-- TAB 1: HIERARKI --}}
         <div class="tab-pane fade show active" id="hierarki" role="tabpanel" aria-labelledby="hierarki-tab">
-            <div class="d-flex flex-column gap-3">
+            <div class="d-flex flex-column gap-3" id="sub-programs-container">
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2 justify-content-between">
             <h3 class="fw-bold fs-6 mb-0 text-dark d-flex align-items-center">
                 <i class="fa-solid fa-sitemap text-primary me-2 opacity-75"></i>Hierarchy Structure
@@ -315,10 +315,13 @@
             $subTotal = $subActs->count();
             $subAvg   = round($calcSubProgress($sub));
         @endphp
-        <div class="card shadow-sm border-0 overflow-hidden sub-card mb-3" data-name="{{ strtolower($sub->name) }}">
+        <div class="card shadow-sm border-0 overflow-hidden sub-card mb-3 selectable-row" data-name="{{ strtolower($sub->name) }}" data-id="{{ $sub->id }}">
             {{-- Sub Program Header --}}
             <div class="card-header px-4 py-3 d-flex justify-content-between align-items-center gap-3"
                  style="background: linear-gradient(to right, #1e3a5f, #1d4ed8); border: none;">
+                <div class="sub-drag-handle py-2" style="cursor: grab;">
+                    <i class="fa-solid fa-grip-vertical text-white opacity-50"></i>
+                </div>
                 <div class="d-flex align-items-center gap-3 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSub{{ $sub->id }}" aria-expanded="true">
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 36px; height: 36px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);">
@@ -326,7 +329,10 @@
                     </div>
                     <div>
                         <p class="text-white opacity-60 mb-0" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;">Sub Program</p>
-                        <h5 class="fw-bold text-white mb-0 fs-6">{{ $sub->name }}</h5>
+                        <h5 class="fw-bold text-white mb-0 fs-6"><span class="sub-num">{{ $loop->iteration }}</span>. {{ $sub->name }}</h5>
+                        @if($sub->description)
+                            <div class="text-white-50 mt-1" style="font-size: 0.68rem;">{{ Str::limit($sub->description, 80) }}</div>
+                        @endif
                         @if($sub->start_date && $sub->end_date)
                             <div class="text-white-50 mt-1 d-flex align-items-center gap-1" style="font-size: 0.68rem;">
                                 <i class="fa-regular fa-calendar-days"></i>
@@ -394,15 +400,18 @@
                 <div style="height: 4px; background: #e2e8f0;">
                     <div style="width: {{ $subAvg }}%; height: 100%; background: linear-gradient(to right, #3b82f6, #6366f1);"></div>
                 </div>
-                <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body">
+                <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body milestones-container" data-sub-id="{{ $sub->id }}" id="milestones-{{ $sub->id }}">
                 @forelse($sub->milestones as $ms)
                 @php
                     $msActs  = $ms->activities;
                     $msTotal = $msActs->count();
                     $msAvg   = round($calcMsProgress($ms));
                 @endphp
-                <div class="card border-0 shadow-sm overflow-hidden milestone-card mb-3" data-name="{{ strtolower($ms->name) }}">
+                <div class="card border-0 shadow-sm overflow-hidden milestone-card mb-3" data-name="{{ strtolower($ms->name) }}" data-id="{{ $ms->id }}">
                     <div class="px-3 py-2 d-flex justify-content-between align-items-center" style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                        <div class="ms-drag-handle py-1 px-1 me-1" style="cursor: grab;">
+                            <i class="fa-solid fa-grip-vertical text-muted opacity-50"></i>
+                        </div>
                         <div class="d-flex align-items-center gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="true">
                             <div class="rounded-2 d-flex align-items-center justify-content-center transition-transform icon-collapse"
                                  style="width: 28px; height: 28px; background: #dbeafe; border: 1px solid #bfdbfe;" id="iconMs{{ $ms->id }}">
@@ -410,13 +419,16 @@
                             </div>
                             <div>
                                 <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">Milestone</p>
-                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;">{{ $ms->name }}
+                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num">{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $ms->name }}
                                     @if($ms->bobot !== null)
                                     <span class="ms-1 badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
                                         <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.5rem;"></i>{{ $ms->bobot }}%
                                     </span>
                                     @endif
                                 </h6>
+                                @if($ms->description)
+                                    <div class="text-muted mt-1" style="font-size: 0.68rem;">{{ Str::limit($ms->description, 70) }}</div>
+                                @endif
                                 @if($ms->start_date && $ms->end_date)
                                     <div class="text-muted mt-1 d-flex align-items-center gap-1" style="font-size: 0.68rem;">
                                         <i class="fa-regular fa-calendar-days"></i>
@@ -489,7 +501,7 @@
                                     <th class="px-2 py-2 border-bottom" style="width: 70px;"></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="border-top-0 activities-container" data-ms-id="{{ $ms->id }}" id="activities-{{ $ms->id }}">
                                 @foreach($ms->activities as $act)
                                 @php
                                     $manualColor = '#64748b'; $manualBg = '#f1f5f9';
@@ -507,12 +519,17 @@
 
                                     $barColor = $act->progress >= 100 ? '#059669' : ($act->progress >= 60 ? '#4f46e5' : ($act->progress > 0 ? '#d97706' : '#cbd5e1'));
                                 @endphp
-                                <tr class="activity-item" data-name="{{ strtolower($act->name) }}">
+                                <tr class="activity-item" data-name="{{ strtolower($act->name) }}" data-id="{{ $act->id }}">
                                     <td class="px-4 py-2">
-                                        <div class="fw-semibold text-dark">{{ $act->name }}</div>
-                                        @if($act->description)
-                                            <div class="text-muted" style="font-size: 0.68rem;">{{ Str::limit($act->description, 60) }}</div>
-                                        @endif
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 act-drag-handle" style="cursor: grab;"></i>
+                                            <div>
+                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $loop->parent->parent->iteration }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $act->name }}</div>
+                                                @if($act->description)
+                                                    <div class="text-muted" style="font-size: 0.68rem;">{{ Str::limit($act->description, 60) }}</div>
+                                                @endif
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-3 py-2 text-center" style="font-size: 0.68rem; color: #64748b;">
                                         <div class="d-flex flex-column align-items-center">
@@ -1409,7 +1426,100 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Sortable Sub Programs
+    const subContainer = document.getElementById('sub-programs-container');
+    if (subContainer) {
+        new Sortable(subContainer, {
+            animation: 150,
+            handle: '.sub-drag-handle',
+            ghostClass: 'bg-primary',
+            ghostClass: 'opacity-25',
+            onEnd: function (evt) {
+                const order = Array.from(subContainer.querySelectorAll('.sub-card')).map(el => el.dataset.id);
+                updateHierarchyOrder('sub_program', order);
+                recalculateHierarchyNumbering();
+            }
+        });
+    }
+
+    // 2. Sortable Milestones
+    document.querySelectorAll('.milestones-container').forEach(container => {
+        new Sortable(container, {
+            animation: 150,
+            handle: '.ms-drag-handle',
+            ghostClass: 'bg-primary',
+            ghostClass: 'opacity-25',
+            onEnd: function (evt) {
+                const order = Array.from(container.querySelectorAll('.milestone-card')).map(el => el.dataset.id);
+                updateHierarchyOrder('milestone', order);
+                recalculateHierarchyNumbering();
+            }
+        });
+    });
+
+    // 3. Sortable Activities
+    document.querySelectorAll('.activities-container').forEach(container => {
+        new Sortable(container, {
+            animation: 150,
+            handle: '.act-drag-handle',
+            ghostClass: 'bg-primary',
+            ghostClass: 'opacity-10',
+            onEnd: function (evt) {
+                const order = Array.from(container.querySelectorAll('.activity-item')).map(el => el.dataset.id);
+                updateHierarchyOrder('activity', order);
+                recalculateHierarchyNumbering();
+            }
+        });
+    });
+
+    function recalculateHierarchyNumbering() {
+        // Recalculate Sub Programs
+        const subCards = document.querySelectorAll('.sub-card');
+        subCards.forEach((subCard, subIdx) => {
+            const subNum = subIdx + 1;
+            const subNumEl = subCard.querySelector('.sub-num');
+            if (subNumEl) subNumEl.textContent = subNum;
+
+            // Recalculate Milestones within this sub program
+            const msCards = subCard.querySelectorAll('.milestone-card');
+            msCards.forEach((msCard, msIdx) => {
+                const msNum = subNum + '.' + (msIdx + 1);
+                const msNumEl = msCard.querySelector('.ms-num');
+                if (msNumEl) msNumEl.textContent = msNum;
+
+                // Recalculate Activities within this milestone
+                const actItems = msCard.querySelectorAll('.activity-item');
+                actItems.forEach((actItem, actIdx) => {
+                    const actNum = msNum + '.' + (actIdx + 1);
+                    const actNumEl = actItem.querySelector('.act-num');
+                    if (actNumEl) actNumEl.textContent = actNum;
+                });
+            });
+        });
+    }
+
+    function updateHierarchyOrder(type, order) {
+        fetch('{{ route("hierarchy.update-order") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ type: type, order: order })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(type + ' order updated successfully');
+            }
+        })
+        .catch(error => console.error('Error updating order:', error));
+    }
+});
+
 // ===== AJAX TAB LOADER =====
 document.addEventListener('DOMContentLoaded', function() {
     const ajaxTabs = document.querySelectorAll('.ajax-tab');

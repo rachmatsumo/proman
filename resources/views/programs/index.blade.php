@@ -4,65 +4,100 @@
 @section('header_title', 'Program List')
 
 @section('header_actions')
-    <a href="{{ route('programs.create') }}" class="btn btn-primary btn-sm shadow-sm fw-medium">
-        <i class="fa-solid fa-plus me-2"></i> New Program
-    </a>
+    <div class="d-flex align-items-center gap-3">
+        <div class="position-relative d-none d-md-block" style="width: 250px;">
+            <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.9rem;"></i>
+            <input type="text" id="programSearch" class="form-control form-control-sm ps-5 bg-light border-0 shadow-none rounded-pill" placeholder="Search programs..." style="height: 38px; border: 1px solid #e2e8f0 !important;">
+        </div>
+        <a href="{{ route('programs.create') }}" class="btn btn-primary shadow-sm fw-bold px-3 d-flex align-items-center" style="height: 38px; border-radius: 10px;">
+            <i class="fa-solid fa-plus me-2"></i> New Program
+        </a>
+    </div>
 @endsection
 
 @section('content')
-<div class="card shadow-sm border-secondary border-opacity-25 container-xl px-0 overflow-hidden">
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light text-secondary">
+        <table class="table table-hover align-middle mb-0" id="programsTable">
+            <thead class="bg-light text-secondary">
                 <tr>
-                    <th scope="col" class="py-3 px-4 fw-semibold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05rem;">Program Name</th>
-                    <th scope="col" class="py-3 px-4 fw-semibold text-uppercase w-25" style="font-size: 0.75rem; letter-spacing: 0.05rem;">Dates</th>
-                    <th scope="col" class="py-3 px-4 fw-semibold text-uppercase w-25" style="font-size: 0.75rem; letter-spacing: 0.05rem;">Sub Programs</th>
-                    <th scope="col" class="py-3 px-4 fw-semibold text-uppercase text-end w-25" style="font-size: 0.75rem; letter-spacing: 0.05rem;">Actions</th>
+                    <th scope="col" class="py-4 px-4 fw-bold border-0 text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.05rem;">Program Name</th>
+                    <th scope="col" class="py-4 px-4 fw-bold border-0 text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.05rem;">Timeline</th>
+                    <th scope="col" class="py-4 px-4 fw-bold border-0 text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.05rem;">Status</th>
+                    <th scope="col" class="py-4 px-4 fw-bold border-0 text-uppercase text-muted text-end" style="font-size: 0.7rem; letter-spacing: 0.05rem;">Management</th>
                 </tr>
             </thead>
             <tbody class="border-top-0">
                 @forelse($programs as $program)
-                    <tr>
-                        <td class="px-4 py-3">
-                            <div class="fw-bold text-dark d-flex align-items-center">
-                                <i class="fa-solid fa-folder text-primary me-3 fs-5"></i> 
-                                {{ $program->name }}
+                    <tr class="program-row border-bottom border-light">
+                        <td class="px-4 py-4">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 44px; height: 44px;">
+                                    <i class="fa-solid fa-folder text-primary fs-5"></i> 
+                                </div>
+                                <div class="overflow-hidden">
+                                    <div class="fw-bold text-dark fs-6 program-name">{{ $program->name }}</div>
+                                    @if($program->description)
+                                        <div class="text-muted mt-1 text-truncate" style="font-size: 0.75rem; max-width: 400px;">{{ $program->description }}</div>
+                                    @endif
+                                </div>
                             </div>
-                            @if($program->description)
-                                <div class="text-muted mt-1 text-truncate" style="font-size: 0.8rem; padding-left: 2.2rem; max-width: 300px;">{{ $program->description }}</div>
-                            @endif
                         </td>
-                        <td class="px-4 py-3 text-secondary" style="font-size: 0.8rem;">
-                            <div><span class="fw-medium text-dark">Start:</span> {{ $program->start_date ? $program->start_date->format('d M Y') : '-' }}</div>
-                            <div class="mt-1"><span class="fw-medium text-dark">End:</span> {{ $program->end_date ? $program->end_date->format('d M Y') : '-' }}</div>
+                        <td class="px-4 py-4 text-secondary">
+                            <div class="d-flex flex-column gap-1" style="font-size: 0.8rem;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fa-regular fa-calendar-check me-2 opacity-50" style="width: 14px;"></i>
+                                    <span>{{ $program->start_date ? $program->start_date->format('d M Y') : '-' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="fa-regular fa-calendar-xmark me-2 opacity-50" style="width: 14px;"></i>
+                                    <span>{{ $program->end_date ? $program->end_date->format('d M Y') : '-' }}</span>
+                                </div>
+                            </div>
                         </td>
-                        <td class="px-4 py-3">
-                           <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 fw-medium" style="font-size: 0.75rem;">
-                               {{ $program->subPrograms->count() }} Sub Programs
-                           </span>
+                        <td class="px-4 py-4">
+                           <div class="d-flex align-items-center">
+                               <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill px-3 py-2 fw-bold" style="font-size: 0.7rem;">
+                                   <i class="fa-solid fa-layer-group me-1"></i>
+                                   {{ $program->subPrograms->count() }} Sub Programs
+                               </span>
+                           </div>
                         </td>
-                        <td class="px-4 py-3 text-end text-nowrap">
-                            <a href="{{ route('programs.show', $program->id) }}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center me-1">
-                                <i class="fa-solid fa-eye me-1"></i> Show 
-                            </a>
-                            
-                            <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="return confirm('Hapus program ini secara permanen?')" class="d-inline-block">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center">
-                                    <i class="fa-solid fa-trash-can me-1"></i> Delete
-                                </button>
-                            </form>
+                        <td class="px-4 py-4 text-end text-nowrap">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ route('programs.show', $program->id) }}" class="btn btn-sm btn-light border d-inline-flex align-items-center fw-bold px-3" style="border-radius: 8px;">
+                                    <i class="fa-solid fa-arrow-right-long me-2"></i> Details
+                                </a>
+                                
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light border px-2" type="button" data-bs-toggle="dropdown" style="border-radius: 8px;">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                        <li>
+                                            <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="return confirm('Hapus program ini secara permanen?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="dropdown-item text-danger d-flex align-items-center">
+                                                    <i class="fa-solid fa-trash-can me-2"></i> Delete Program
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
                         <td colspan="4" class="px-4 py-5 text-center text-muted">
-                            <div class="text-primary opacity-50 mx-auto mb-3">
-                                <i class="fa-solid fa-folder-open display-4"></i>
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <i class="fa-solid fa-box-open fs-1 opacity-25"></i>
                             </div>
-                            <p class="fs-6 fw-medium text-dark mb-1">No Programs Found</p>
-                            <p class="small mb-0">Get started by creating a new program.</p>
+                            <p class="fs-6 fw-bold text-dark mb-1">No Programs Found</p>
+                            <p class="small mb-4 text-muted">Start organizing your projects by creating a new program.</p>
+                            <a href="{{ route('programs.create') }}" class="btn btn-primary px-4 fw-bold">
+                                <i class="fa-solid fa-plus me-2"></i> Create First Program
+                            </a>
                         </td>
                     </tr>
                 @endforelse
@@ -70,4 +105,26 @@
         </table>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.getElementById('programSearch').addEventListener('keyup', function() {
+        const query = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.program-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.program-name').textContent.toLowerCase();
+            const description = row.querySelector('.text-muted') ? row.querySelector('.text-muted').textContent.toLowerCase() : '';
+            
+            if (name.includes(query) || description.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Handle empty state if needed (optional)
+    });
+</script>
+@endpush
 @endsection

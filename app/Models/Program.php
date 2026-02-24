@@ -24,6 +24,6 @@ class Program extends Model
 
     public function subPrograms()
     {
-        return $this->hasMany(SubProgram::class);
+        return $this->hasMany(SubProgram::class)->orderBy('sort_order', 'asc');
     }
 }
