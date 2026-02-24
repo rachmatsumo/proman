@@ -139,26 +139,79 @@ class ProjectController extends Controller
             'id' => 'required|string',
             'start' => 'required|date_format:Y-m-d',
             'end' => 'required|date_format:Y-m-d',
+            'progress' => 'nullable|integer|min:0|max:100',
         ]);
 
         $idString = $request->id;
         $start = $request->start;
         $end = $request->end;
+        $progress = $request->progress;
 
         if (strpos($idString, 'prog_') === 0) {
             $id = str_replace('prog_', '', $idString);
             Program::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
         } elseif (strpos($idString, 'sub_') === 0) {
             $id = str_replace('sub_', '', $idString);
-            SubProgram::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+            $item = SubProgram::findOrFail($id);
+            $item->update(['start_date' => $start, 'end_date' => $end]);
+            $this->rollupProgram($item->program_id);
         } elseif (strpos($idString, 'ms_') === 0) {
             $id = str_replace('ms_', '', $idString);
-            Milestone::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+            $item = Milestone::findOrFail($id);
+            $item->update(['start_date' => $start, 'end_date' => $end]);
+            $this->rollupSubProgram($item->sub_program_id);
         } elseif (strpos($idString, 'act_') === 0) {
             $id = str_replace('act_', '', $idString);
-            Activity::where('id', $id)->update(['start_date' => $start, 'end_date' => $end]);
+            $item = Activity::findOrFail($id);
+            $item->update([
+                'start_date' => $start, 
+                'end_date' => $end,
+                'progress' => $progress ?? 0
+            ]);
+            $this->rollupMilestone($item->milestone_id);
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function rollupMilestone($milestoneId)
+    {
+        $ms = Milestone::with('activities')->find($milestoneId);
+        if (!$ms) return;
+
+        $min = $ms->activities->min('start_date');
+        $max = $ms->activities->max('end_date');
+
+        if ($min && $max) {
+            $ms->update(['start_date' => $min, 'end_date' => $max]);
+            $this->rollupSubProgram($ms->sub_program_id);
+        }
+    }
+
+    private function rollupSubProgram($subProgramId)
+    {
+        $sub = SubProgram::with('milestones')->find($subProgramId);
+        if (!$sub) return;
+
+        $min = $sub->milestones->min('start_date');
+        $max = $sub->milestones->max('end_date');
+
+        if ($min && $max) {
+            $sub->update(['start_date' => $min, 'end_date' => $max]);
+            $this->rollupProgram($sub->program_id);
+        }
+    }
+
+    private function rollupProgram($programId)
+    {
+        $prog = Program::with('subPrograms')->find($programId);
+        if (!$prog) return;
+
+        $min = $prog->subPrograms->min('start_date');
+        $max = $prog->subPrograms->max('end_date');
+
+        if ($min && $max) {
+            $prog->update(['start_date' => $min, 'end_date' => $max]);
+        }
     }
 }

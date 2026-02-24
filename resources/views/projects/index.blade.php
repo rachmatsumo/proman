@@ -19,7 +19,7 @@
                 </div>
                 <div class="position-relative z-1 w-100">
                     <div class="d-flex align-items-center mb-2">
-                        <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center me-3" style="width: 42px; height: 42px;">
+                        <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center me-3" style="min-width: 42px; min-height: 42px;">
                             <i class="fa-solid fa-layer-group text-white fs-5"></i>
                         </div>
                         <div>
@@ -255,9 +255,9 @@
                                 <td class="px-3 py-3 text-muted" style="font-size: 0.72rem;">
                                     <div class="d-flex align-items-center gap-1">
                                         <i class="fa-solid fa-folder-open opacity-40"></i>
-                                        <span class="fw-medium text-dark opacity-75">{{ $act->milestone->subProgram->program->name }}</span>
+                                        <span class="fw-medium text-dark opacity-75">{{ $act->milestone?->subProgram?->program?->name ?? 'N/A' }}</span>
                                         <i class="fa-solid fa-angle-right opacity-25" style="font-size: 0.5rem;"></i>
-                                        <span>{{ $act->milestone->subProgram->name }}</span>
+                                        <span>{{ $act->milestone?->subProgram?->name ?? 'N/A' }}</span>
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 text-center">

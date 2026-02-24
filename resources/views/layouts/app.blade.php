@@ -91,7 +91,14 @@
                     <div class="nav-icon-wrapper d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px;">
                         <i class="fa-solid fa-briefcase fs-6"></i>
                     </div>
-                    <span class="ms-2 fw-medium">List Program</span>
+                    <span class="ms-2 fw-medium">Program</span>
+                </a>
+
+                <a href="{{ route('agendas.index') }}" class="nav-link text-slate-300 rounded-3 p-2 px-3 d-flex align-items-center transition-all {{ request()->routeIs('agendas.*') ? 'active shadow-sm' : '' }}">
+                    <div class="nav-icon-wrapper d-flex align-items-center justify-content-center rounded" style="width: 32px; height: 32px;">
+                        <i class="fa-solid fa-calendar-check fs-6"></i>
+                    </div>
+                    <span class="ms-2 fw-medium">Agenda</span>
                 </a>
             </div>
             

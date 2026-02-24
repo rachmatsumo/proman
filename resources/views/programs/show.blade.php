@@ -17,6 +17,14 @@
     </div>
 @endsection
 
+{{-- Frappe Gantt — Reverted from FullCalendar per user request --}}
+@push('styles')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.css" />
+@endpush
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.min.js"></script>
+@endpush
+
 @section('content')
 @php
     $currentUser = auth()->user();
@@ -1782,13 +1790,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                 await loadScript(script);
                             }
                         };
-                        
                         runScriptsSequentially().catch(err => console.error('Error executing injected script:', err));
                     })
                     .catch(err => {
                         console.error('Error loading tab content:', err);
                         targetPane.innerHTML = `<div class="alert alert-danger m-4">Gagal memuat konten. Silakan muat ulang halaman.</div>`;
                     });
+            } else {
+                // If already loaded, trigger resize event which might help some libraries
+                if (this.id === 'timeline-tab') {
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    }, 50);
+                }
+            }
+
+            // Additional check for timeline tab after first injection
+            if (this.id === 'timeline-tab') {
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 300);
             }
         });
     });

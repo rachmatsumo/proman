@@ -83,4 +83,9 @@ class User extends Authenticatable
                     ->withPivot('role')
                     ->withTimestamps();
     }
+
+    public function agendas()
+    {
+        return $this->belongsToMany(Agenda::class, 'agenda_user');
+    }
 }

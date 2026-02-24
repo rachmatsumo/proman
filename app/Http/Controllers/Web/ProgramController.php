@@ -63,8 +63,98 @@ class ProgramController extends Controller
 
     public function partialGantt(string $id)
     {
-        $program = Program::findOrFail($id);
-        return view('programs.partials.gantt', compact('program'));
+        $program = Program::with(['subPrograms.milestones.activities'])->findOrFail($id);
+
+        $ganttTasks = [];
+
+        $programData = [
+            'id'           => 'prog_' . $program->id,
+            'name'         => $program->name,
+            'start'        => $program->start_date?->format('Y-m-d'),
+            'end'          => $program->end_date?->format('Y-m-d'),
+            'progress'     => 0,
+            'custom_class' => 'bar-program',
+            'dependencies' => null,
+        ];
+
+        $allGanttTasks = [];
+        $progMin = null;
+        $progMax = null;
+
+        foreach ($program->subPrograms as $sub) {
+            $subMin = null;
+            $subMax = null;
+            $subTasks = [];
+
+            foreach ($sub->milestones as $ms) {
+                $msMin = null;
+                $msMax = null;
+                $msTasks = [];
+
+                foreach ($ms->activities as $act) {
+                    $start = $act->start_date;
+                    $end   = $act->end_date;
+
+                    if ($start) {
+                        if (!$msMin || $start < $msMin) $msMin = $start;
+                        if (!$subMin || $start < $subMin) $subMin = $start;
+                        if (!$progMin || $start < $progMin) $progMin = $start;
+                    }
+                    if ($end) {
+                        if (!$msMax || $end > $msMax) $msMax = $end;
+                        if (!$subMax || $end > $subMax) $subMax = $end;
+                        if (!$progMax || $end > $progMax) $progMax = $end;
+                    }
+
+                    $statusSlug = str_replace(' ', '-', $act->status ?? '');
+                    $msTasks[] = [
+                        'id'           => 'act_' . $act->id,
+                        'name'         => $act->name,
+                        'start'        => $start?->format('Y-m-d'),
+                        'end'          => $end?->format('Y-m-d'),
+                        'progress'     => $act->progress ?? 0,
+                        'custom_class' => 'bar-activity status-' . $statusSlug,
+                        'dependencies' => 'ms_' . $ms->id,
+                    ];
+                }
+
+                // Milestone Rollup Header
+                $ganttTasks[] = [
+                    'id'           => 'ms_' . $ms->id,
+                    'name'         => $ms->name,
+                    'start'        => ($msMin ?? $ms->start_date)?->format('Y-m-d'),
+                    'end'          => ($msMax ?? $ms->end_date)?->format('Y-m-d'),
+                    'progress'     => 0,
+                    'custom_class' => 'bar-milestone',
+                    'dependencies' => 'sub_' . $sub->id,
+                ];
+                $ganttTasks = array_merge($ganttTasks, $msTasks);
+            }
+
+            // Sub Program Rollup Header
+            $allGanttTasks[] = [
+                'id'           => 'sub_' . $sub->id,
+                'name'         => $sub->name,
+                'start'        => ($subMin ?? $sub->start_date)?->format('Y-m-d'),
+                'end'          => ($subMax ?? $sub->end_date)?->format('Y-m-d'),
+                'progress'     => 0,
+                'custom_class' => 'bar-subprogram',
+                'dependencies' => 'prog_' . $program->id,
+            ];
+            $allGanttTasks = array_merge($allGanttTasks, $ganttTasks ?? []);
+            $ganttTasks = []; // Reset for next sub
+        }
+
+        // Program Rollup Header
+        $programData['start'] = ($progMin ?? $program->start_date)?->format('Y-m-d');
+        $programData['end']   = ($progMax ?? $program->end_date)?->format('Y-m-d');
+        
+        array_unshift($allGanttTasks, $programData);
+        $ganttTasks = $allGanttTasks;
+
+        $ganttTasksJson = json_encode($ganttTasks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+        return view('programs.partials.gantt', compact('program', 'ganttTasksJson'));
     }
 
     public function partialCalendar(string $id)

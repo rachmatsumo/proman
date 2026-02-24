@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\SubProgramController;
 use App\Http\Controllers\Web\MilestoneController;
 use App\Http\Controllers\Web\ActivityController;
 use App\Http\Controllers\Web\AttachmentController;
+use App\Http\Controllers\Web\AgendaController;
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -21,7 +22,7 @@ Route::post('register', [RegisterController::class, 'register']);
 
 Route::middleware('auth')->group(function () {
     Route::get('/', function () {
-        return redirect()->route('projects.gantt');
+        return redirect()->route('projects.index');
     });
 
     Route::prefix('projects')->name('projects.')->group(function () {
@@ -51,6 +52,9 @@ Route::middleware('auth')->group(function () {
 
     // User Management
     Route::resource('users', App\Http\Controllers\UserController::class);
+
+    // Agenda Module
+    Route::resource('agendas', AgendaController::class);
 
     // Program Member Management
     Route::post('programs/{program}/members', [App\Http\Controllers\Web\ProgramMemberController::class, 'store'])->name('programs.members.store');

@@ -1,11 +1,4 @@
-<!-- CSS and JS for FullCalendar — Dedicated to this partial -->
-@push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" />
-@endpush
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-@endpush
-
+<!-- CSS for FullCalendar -->
 <style>
     #calendar {
         background: white;
@@ -24,10 +17,11 @@
     <div id="calendar" class="shadow-sm border border-light-subtle"></div>
 </div>
 
+<!-- JS for FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script>
     (function() {
         var calendarEl = document.getElementById('calendar');
-        if (!calendarEl) return;
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
@@ -38,17 +32,10 @@
             },
             events: '/api/projects/calendar?program_id={{ $program->id }}',
             eventDidMount: function(info) {
-                var status = info.event.extendedProps.status || 'N/A';
-                var progress = info.event.extendedProps.progress || 0;
-                info.el.title = "Status: " + status.toUpperCase() + " | Progress: " + progress + "%";
+                info.el.title = "Status: " + info.event.extendedProps.status.toUpperCase() + " | Progress: " + info.event.extendedProps.progress + "%";
             }
         });
 
         calendar.render();
-        
-        // Handle tab visibility
-        document.querySelector('[data-bs-target="#calendar-pane"]').addEventListener('shown.bs.tab', function () {
-            calendar.updateSize();
-        });
     })();
 </script>

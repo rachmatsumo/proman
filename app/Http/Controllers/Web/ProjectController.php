@@ -17,7 +17,9 @@ class ProjectController extends Controller
         $totalPrograms = \App\Models\Program::count();
         $totalActivities = \App\Models\Activity::count();
         
-        $activities = \App\Models\Activity::with('milestone.subProgram.program')->get();
+        $activities = \App\Models\Activity::whereHas('milestone.subProgram.program')
+                            ->with('milestone.subProgram.program')
+                            ->get();
         
         $statusCounts = [
             'Draft' => 0,
@@ -46,7 +48,8 @@ class ProjectController extends Controller
         }
         
         // Let's get the 5 most recent or upcoming activities for quick view
-        $recentActivities = \App\Models\Activity::with('milestone.subProgram.program')
+        $recentActivities = \App\Models\Activity::whereHas('milestone.subProgram.program')
+                            ->with('milestone.subProgram.program')
                             ->orderBy('start_date', 'asc')
                             ->where('progress', '<', 100)
                             ->take(5)
