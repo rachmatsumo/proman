@@ -21,12 +21,21 @@
     .gantt .bar-activity .bar-progress { fill: #10b981; } /* Emerald */
     .gantt .bar-activity .bar { fill: #94a3b8; opacity: 0.3; }
 
+    .gantt .bar-subactivity .bar-progress { fill: #0d9488; } /* Teal */
+    .gantt .bar-subactivity .bar { fill: #99f6e4; opacity: 0.4; }
+
     /* Status Specific for Activities */
     .gantt .bar-activity.status-Done .bar-progress { fill: #059669; }
     .gantt .bar-activity.status-On-Progress .bar-progress { fill: #d97706; }
     .gantt .bar-activity.status-On-Hold .bar-progress { fill: #475569; }
     .gantt .bar-activity.status-Cancelled .bar-progress { fill: #be123c; }
     .gantt .bar-activity.status-To-Do .bar-progress { fill: #0ea5e9; }
+    /* Status Specific for Sub Activities */
+    .gantt .bar-subactivity.status-Done .bar-progress { fill: #0f766e; }
+    .gantt .bar-subactivity.status-On-Progress .bar-progress { fill: #b45309; }
+    .gantt .bar-subactivity.status-On-Hold .bar-progress { fill: #475569; }
+    .gantt .bar-subactivity.status-Cancelled .bar-progress { fill: #9f1239; }
+    .gantt .bar-subactivity.status-To-Do .bar-progress { fill: #0284c7; }
     
     /* View Mode Toggles Styling */
     .view-btn-grp .btn.active {
@@ -208,6 +217,20 @@
     });
 
     function recalculateRollups() {
+        // 0. Activities from Sub Activities
+        tasks.filter(t => t.id.startsWith('act_')).forEach(act => {
+            let children = tasks.filter(t => t.dependencies === act.id);
+            if (children.length > 0) {
+                let min = null, max = null;
+                children.forEach(c => {
+                    if (!min || c.start < min) min = c.start;
+                    if (!max || c.end > max) max = c.end;
+                });
+                act.start = min;
+                act.end = max;
+            }
+        });
+
         // 1. Milestones from Activities
         tasks.filter(t => t.id.startsWith('ms_')).forEach(ms => {
             let children = tasks.filter(t => t.dependencies === ms.id);
@@ -306,6 +329,7 @@
         const title = document.getElementById('gantt-modal-title');
         
         var isActivity = task.id.indexOf('act_') === 0;
+        var isSubAct = task.id.indexOf('subact_') === 0;
         var isMilestone = task.id.indexOf('ms_') === 0;
         var isSub = task.id.indexOf('sub_') === 0;
         var isProg = task.id.indexOf('prog_') === 0;
@@ -319,12 +343,15 @@
         } else if (isMilestone) {
             iconBg.style.background = '#dbeafe'; icon.style.color = '#3b82f6'; icon.className = 'fa-solid fa-flag-checkered';
             subtitle.innerText = 'Milestone'; title.innerText = 'Edit Timeline';
+        } else if (isSubAct) {
+            iconBg.style.background = '#ccfbf1'; icon.style.color = '#0d9488'; icon.className = 'fa-solid fa-circle-nodes';
+            subtitle.innerText = 'Sub Activity'; title.innerText = 'Edit Timeline';
         } else if (isActivity) {
             iconBg.style.background = '#d1fae5'; icon.style.color = '#059669'; icon.className = 'fa-solid fa-list-check';
             subtitle.innerText = 'Activity'; title.innerText = 'Edit Timeline';
         }
 
-        document.getElementById('gantt-progress-container').style.display = isActivity ? 'block' : 'none';
+        document.getElementById('gantt-progress-container').style.display = (isActivity || isSubAct) ? 'block' : 'none';
         
         $modal.show();
     }

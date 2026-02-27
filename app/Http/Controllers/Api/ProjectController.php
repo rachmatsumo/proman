@@ -8,6 +8,7 @@ use App\Models\Program;
 use App\Models\SubProgram;
 use App\Models\Milestone;
 use App\Models\Activity;
+use App\Models\SubActivity;
 
 class ProjectController extends Controller
 {
@@ -160,6 +161,16 @@ class ProjectController extends Controller
             $item = Milestone::findOrFail($id);
             $item->update(['start_date' => $start, 'end_date' => $end]);
             $this->rollupSubProgram($item->sub_program_id);
+        } elseif (strpos($idString, 'subact_') === 0) {
+            $id = str_replace('subact_', '', $idString);
+            $item = SubActivity::findOrFail($id);
+            $item->update([
+                'start_date' => $start, 
+                'end_date'   => $end,
+                'progress'   => $progress ?? 0
+            ]);
+            // Roll up to parent activity -> milestone -> sub program -> program
+            $this->rollupMilestone($item->activity->milestone_id);
         } elseif (strpos($idString, 'act_') === 0) {
             $id = str_replace('act_', '', $idString);
             $item = Activity::findOrFail($id);

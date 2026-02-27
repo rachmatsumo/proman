@@ -63,7 +63,7 @@ class ProgramController extends Controller
 
     public function partialGantt(string $id)
     {
-        $program = Program::with(['subPrograms.milestones.activities'])->findOrFail($id);
+        $program = Program::with(['subPrograms.milestones.activities.subActivities'])->findOrFail($id);
 
         $ganttTasks = [];
 
@@ -107,8 +107,9 @@ class ProgramController extends Controller
                     }
 
                     $statusSlug = str_replace(' ', '-', $act->status ?? '');
+                    $actId = 'act_' . $act->id;
                     $msTasks[] = [
-                        'id'           => 'act_' . $act->id,
+                        'id'           => $actId,
                         'name'         => $act->name,
                         'start'        => $start?->format('Y-m-d'),
                         'end'          => $end?->format('Y-m-d'),
@@ -116,6 +117,34 @@ class ProgramController extends Controller
                         'custom_class' => 'bar-activity status-' . $statusSlug,
                         'dependencies' => 'ms_' . $ms->id,
                     ];
+
+                    // Sub Activities
+                    foreach ($act->subActivities as $subAct) {
+                        $subStart = $subAct->start_date;
+                        $subEnd   = $subAct->end_date;
+
+                        if ($subStart) {
+                            if (!$msMin || $subStart < $msMin) $msMin = $subStart;
+                            if (!$subMin || $subStart < $subMin) $subMin = $subStart;
+                            if (!$progMin || $subStart < $progMin) $progMin = $subStart;
+                        }
+                        if ($subEnd) {
+                            if (!$msMax || $subEnd > $msMax) $msMax = $subEnd;
+                            if (!$subMax || $subEnd > $subMax) $subMax = $subEnd;
+                            if (!$progMax || $subEnd > $progMax) $progMax = $subEnd;
+                        }
+
+                        $subStatusSlug = str_replace(' ', '-', $subAct->status ?? '');
+                        $msTasks[] = [
+                            'id'           => 'subact_' . $subAct->id,
+                            'name'         => $subAct->name,
+                            'start'        => $subStart?->format('Y-m-d'),
+                            'end'          => $subEnd?->format('Y-m-d'),
+                            'progress'     => $subAct->progress ?? 0,
+                            'custom_class' => 'bar-subactivity status-' . $subStatusSlug,
+                            'dependencies' => $actId,
+                        ];
+                    }
                 }
 
                 // Milestone Rollup Header

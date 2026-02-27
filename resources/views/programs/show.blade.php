@@ -20,9 +20,19 @@
 {{-- Frappe Gantt — Reverted from FullCalendar per user request --}}
 @push('styles')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+.flatpickr-range { background-color: #fff; cursor: pointer; }
+.flatpickr-calendar { border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); font-family: inherit; }
+.flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: #6366f1; border-color: #6366f1; }
+.flatpickr-day.inRange { background: #e0e7ff; border-color: #e0e7ff; color: #3730a3; box-shadow: -4px 0 0 #e0e7ff, 4px 0 0 #e0e7ff; }
+.flatpickr-day.selected.startRange, .flatpickr-day.startRange.startRange { border-radius: 8px 0 0 8px; }
+.flatpickr-day.selected.endRange, .flatpickr-day.endRange.endRange { border-radius: 0 8px 8px 0; }
+</style>
 @endpush
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 @endpush
 
 @section('content')
@@ -435,13 +445,7 @@
                     {{-- Add Milestone & Key Result --}}
                     @if($userRole === 'administrator' || $userRole === 'manager')
                     <div class="d-flex gap-1">
-                        <button type="button"
-                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
-                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
-                                onclick="openAddMilestone({{ $sub->id }}, 'key_result')">
-                            <i class="fa-solid fa-plus"></i> KR
-                        </button>
+
                         <button type="button"
                                 class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
                                 style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
@@ -488,7 +492,18 @@
                 @foreach($milestoneGroups as $groupType => $msCollection)
                 <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body {{ $groupType === 'key_results' ? 'key-results-container border-top border-2' : 'milestones-container' }}" data-sub-id="{{ $sub->id }}" id="{{ $groupType }}-{{ $sub->id }}" {!! $groupType === 'key_results' ? 'style="border-style: dashed !important; border-color: #cbd5e1 !important; min-height: 50px;"' : '' !!}>
                 @if($groupType === 'key_results')
-                    <h6 class="text-danger fw-bold mb-0 mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-bullseye me-1"></i> KEY RESULTS</span></h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h6 class="text-danger fw-bold mb-0" style="font-size: 0.75rem;"><i class="fa-solid fa-bullseye me-1"></i> KEY RESULTS</h6>
+                        @if($userRole === 'administrator' || $userRole === 'manager')
+                        <button type="button"
+                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                                style="font-size: 0.7rem; background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626;"
+                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                onclick="openAddMilestone({{ $sub->id }}, 'key_result'); document.getElementById('milestoneModalSubLabel').textContent = 'Sub Program: {{ addslashes($sub->name) }}';">
+                            <i class="fa-solid fa-plus"></i> Tambah KR
+                        </button>
+                        @endif
+                    </div>
                 @endif
                 @forelse($msCollection as $ms)
                 @php
@@ -874,7 +889,14 @@
                     </div>
                     @else
                     <div class="text-center py-3 rounded-3 border border-2 border-dashed bg-white" style="border-color: #fecaca !important;">
-                        <p class="small text-muted mb-0">Belum ada Key Result.</p>
+                        <p class="small text-muted mb-2">Belum ada Key Result.</p>
+                        @if($userRole === 'administrator' || $userRole === 'manager')
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                onclick="openAddMilestone({{ $sub->id }}, 'key_result'); document.getElementById('milestoneModalSubLabel').textContent = 'Sub Program: ' + '{{ addslashes($sub->name) }}';">
+                            <i class="fa-solid fa-plus me-1"></i> Tambah Key Result
+                        </button>
+                        @endif
                     </div>
                     @endif
                 @endforelse
@@ -1279,15 +1301,11 @@
                         <label class="form-label fw-semibold small">Deskripsi</label>
                         <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                            <input type="date" name="start_date" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                            <input type="date" name="end_date" class="form-control form-control-sm">
-                        </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">Periode Tanggal</label>
+                        <input type="text" id="addSubProgramDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                        <input type="hidden" name="start_date" id="addSubProgramStart">
+                        <input type="hidden" name="end_date" id="addSubProgramEnd">
                     </div>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
@@ -1336,15 +1354,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
                         </div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                                <input type="date" name="start_date" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                                <input type="date" name="end_date" class="form-control form-control-sm">
-                            </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold small">Periode Tanggal</label>
+                            <input type="text" id="addMilestoneDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="addMilestoneStart">
+                            <input type="hidden" name="end_date" id="addMilestoneEnd">
                         </div>
                     </div>
                 </div>
@@ -1386,13 +1400,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" class="form-control form-control-sm" required>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Periode Tanggal <span class="text-danger">*</span></label>
+                            <input type="text" id="addActivityDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="addActivityStart" required>
+                            <input type="hidden" name="end_date" id="addActivityEnd" required>
                         </div>
                         <div class="col-3">
                             <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
@@ -1466,15 +1478,11 @@
                         <label class="form-label fw-semibold small">Deskripsi</label>
                         <textarea name="description" id="editProgramDesc" class="form-control form-control-sm" rows="2"></textarea>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                            <input type="date" name="start_date" id="editProgramStart" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                            <input type="date" name="end_date" id="editProgramEnd" class="form-control form-control-sm">
-                        </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">Periode Tanggal</label>
+                        <input type="text" id="editProgramDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                        <input type="hidden" name="start_date" id="editProgramStart">
+                        <input type="hidden" name="end_date" id="editProgramEnd">
                     </div>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
@@ -1520,15 +1528,11 @@
                         <label class="form-label fw-semibold small">Deskripsi</label>
                         <textarea name="description" id="editSubProgramDesc" class="form-control form-control-sm" rows="2"></textarea>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                            <input type="date" name="start_date" id="editSubProgramStart" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                            <input type="date" name="end_date" id="editSubProgramEnd" class="form-control form-control-sm">
-                        </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">Periode Tanggal</label>
+                        <input type="text" id="editSubProgramDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                        <input type="hidden" name="start_date" id="editSubProgramStart">
+                        <input type="hidden" name="end_date" id="editSubProgramEnd">
                     </div>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
@@ -1575,15 +1579,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" id="editMilestoneDesc" class="form-control form-control-sm" rows="2"></textarea>
                         </div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                                <input type="date" name="start_date" id="editMilestoneStart" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                                <input type="date" name="end_date" id="editMilestoneEnd" class="form-control form-control-sm">
-                            </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold small">Periode Tanggal</label>
+                            <input type="text" id="editMilestoneDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="editMilestoneStart">
+                            <input type="hidden" name="end_date" id="editMilestoneEnd">
                         </div>
                     </div>
                 </div>
@@ -1699,13 +1699,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" id="editActivityDesc" class="form-control form-control-sm" rows="2"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="editActivityStart" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="editActivityEnd" class="form-control form-control-sm" required>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Periode Tanggal <span class="text-danger">*</span></label>
+                            <input type="text" id="editActivityDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="editActivityStart">
+                            <input type="hidden" name="end_date" id="editActivityEnd">
                         </div>
                         <div class="col-3">
                             <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
@@ -1770,13 +1768,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" class="form-control form-control-sm" required>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Periode Tanggal <span class="text-danger">*</span></label>
+                            <input type="text" id="addSubActivityDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="addSubActivityStart">
+                            <input type="hidden" name="end_date" id="addSubActivityEnd">
                         </div>
                         <div class="col-3">
                             <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
@@ -1841,13 +1837,11 @@
                             <label class="form-label fw-semibold small">Deskripsi</label>
                             <textarea name="description" id="editSubActivityDesc" class="form-control form-control-sm" rows="2"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="editSubActivityStart" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="editSubActivityEnd" class="form-control form-control-sm" required>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Periode Tanggal <span class="text-danger">*</span></label>
+                            <input type="text" id="editSubActivityDateRange" class="form-control form-control-sm flatpickr-range" placeholder="Pilih tanggal mulai — selesai" readonly>
+                            <input type="hidden" name="start_date" id="editSubActivityStart">
+                            <input type="hidden" name="end_date" id="editSubActivityEnd">
                         </div>
                         <div class="col-3">
                             <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
@@ -1942,6 +1936,51 @@
     }
 
 
+    // ---- Date Range Picker Helpers ----
+    const _fpInstances = {};
+    function initDateRangePickers() {
+        const configs = [
+            { el: 'addSubProgramDateRange',    startId: 'addSubProgramStart',    endId: 'addSubProgramEnd' },
+            { el: 'addMilestoneDateRange',      startId: 'addMilestoneStart',      endId: 'addMilestoneEnd' },
+            { el: 'addActivityDateRange',       startId: 'addActivityStart',       endId: 'addActivityEnd' },
+            { el: 'addSubActivityDateRange',    startId: 'addSubActivityStart',    endId: 'addSubActivityEnd' },
+            { el: 'editProgramDateRange',       startId: 'editProgramStart',       endId: 'editProgramEnd' },
+            { el: 'editSubProgramDateRange',    startId: 'editSubProgramStart',    endId: 'editSubProgramEnd' },
+            { el: 'editMilestoneDateRange',     startId: 'editMilestoneStart',     endId: 'editMilestoneEnd' },
+            { el: 'editActivityDateRange',      startId: 'editActivityStart',      endId: 'editActivityEnd' },
+            { el: 'editSubActivityDateRange',   startId: 'editSubActivityStart',   endId: 'editSubActivityEnd' },
+        ];
+        configs.forEach(({ el, startId, endId }) => {
+            const input = document.getElementById(el);
+            if (!input) return;
+            _fpInstances[el] = flatpickr(input, {
+                mode: 'range',
+                dateFormat: 'd M Y',
+                locale: { firstDayOfWeek: 1 },
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2) {
+                        const fmt = d => d.toISOString().split('T')[0];
+                        document.getElementById(startId).value = fmt(selectedDates[0]);
+                        document.getElementById(endId).value   = fmt(selectedDates[1]);
+                    } else {
+                        document.getElementById(startId).value = '';
+                        document.getElementById(endId).value   = '';
+                    }
+                }
+            });
+        });
+    }
+
+    function setRangePicker(pickerId, start, end) {
+        const fp = _fpInstances[pickerId];
+        if (!fp) return;
+        if (start && end) {
+            fp.setDate([start, end], false);
+        } else {
+            fp.clear();
+        }
+    }
+
     // ---- EDIT Program ----
     function openEditProgram(id, prefix, theme, name, desc, start, end) {
         document.getElementById('editProgramForm').action = '/programs/' + id;
@@ -1951,6 +1990,7 @@
         document.getElementById('editProgramDesc').value = desc;
         document.getElementById('editProgramStart').value = start;
         document.getElementById('editProgramEnd').value = end;
+        setRangePicker('editProgramDateRange', start, end);
     }
 
     // ---- EDIT Sub Program ----
@@ -1963,6 +2003,7 @@
         document.getElementById('editSubProgramDesc').value = desc;
         document.getElementById('editSubProgramStart').value = start;
         document.getElementById('editSubProgramEnd').value = end;
+        setRangePicker('editSubProgramDateRange', start, end);
     }
 
     // ---- EDIT Milestone ----
@@ -1975,6 +2016,7 @@
         document.getElementById('editMilestoneDesc').value = desc;
         document.getElementById('editMilestoneStart').value = start;
         document.getElementById('editMilestoneEnd').value = end;
+        setRangePicker('editMilestoneDateRange', start, end);
         
         if (type === 'divider') {
             document.getElementById('editMilestoneModalNameLabel').innerHTML = 'Nama Section Divider <span class="text-danger">*</span>';
@@ -1998,6 +2040,7 @@
         document.getElementById('editActivityDesc').value = desc;
         document.getElementById('editActivityStart').value = start;
         document.getElementById('editActivityEnd').value = end;
+        setRangePicker('editActivityDateRange', start, end);
         document.getElementById('editActivityProgress').value = progress;
         document.getElementById('editActivityStatus').value = status;
         document.getElementById('editActivityUic').value = uic;
@@ -2013,6 +2056,7 @@
         document.getElementById('editSubActivityDesc').value = desc;
         document.getElementById('editSubActivityStart').value = start;
         document.getElementById('editSubActivityEnd').value = end;
+        setRangePicker('editSubActivityDateRange', start, end);
         document.getElementById('editSubActivityProgress').value = progress;
         document.getElementById('editSubActivityStatus').value = status;
         document.getElementById('editSubActivityUic').value = uic;
@@ -2349,7 +2393,7 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', initSortable);
+    document.addEventListener('DOMContentLoaded', () => { initSortable(); initDateRangePickers(); });
 
     function openDuplicateModal(type, id, name) {
         document.getElementById('duplicateType').value = type;
