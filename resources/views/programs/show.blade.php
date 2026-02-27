@@ -40,6 +40,11 @@
     $totalActs = $allActivities->count();
     $doneActs  = $allActivities->where('progress', 100)->count();
 
+    $allSubActivities = $allActivities->flatMap(fn($a) => $a->subActivities);
+    $totalSubActs = $allSubActivities->count();
+
+    $totalMilestones = $program->subPrograms->flatMap(fn($s) => $s->milestones)->count();
+
     // Pre-compute attachment data
     $attachmentsData = [];
     foreach ($program->subPrograms as $sub) {
@@ -73,10 +78,6 @@
     $calcMsProgress = function($ms) {
         $acts = $ms->activities;
         if ($acts->isEmpty()) return 0;
-        $allHave = $acts->every(fn($a) => $a->bobot !== null);
-        if ($allHave) {
-            return min(100, $acts->sum(fn($a) => $a->progress * $a->bobot / 100));
-        }
         return round($acts->avg('progress') ?? 0);
     };
 
@@ -181,17 +182,19 @@
                     @php
                         $heroStats = [
                             ['label' => 'Sub Programs', 'value' => $program->subPrograms->count(), 'icon' => 'fa-diagram-project'],
+                            ['label' => 'Milestones',   'value' => $totalMilestones,               'icon' => 'fa-bullseye'],
                             ['label' => 'Activities',   'value' => $totalActs,                     'icon' => 'fa-list-check'],
+                            ['label' => 'Sub Activities', 'value' => $totalSubActs,                'icon' => 'fa-list-ul'],
                             ['label' => 'Completed',    'value' => $doneActs,                      'icon' => 'fa-circle-check'],
                             ['label' => 'Avg Progress', 'value' => $avgProgress . '%',             'icon' => 'fa-gauge-high'],
                         ];
                     @endphp
                     @foreach($heroStats as $stat)
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md">
                         <div class="rounded-3 p-3" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12);">
                             <div class="d-flex align-items-center gap-2 mb-1">
                                 <i class="fa-solid {{ $stat['icon'] }} opacity-60" style="font-size: 0.8rem;"></i>
-                                <span class="text-white opacity-60" style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $stat['label'] }}</span>
+                                <span class="text-white opacity-60" style="font-size: 0.50rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $stat['label'] }}</span>
                             </div>
                             <p class="fw-black text-white mb-0" style="font-size: 1.6rem; letter-spacing: -1px;">{{ $stat['value'] }}</p>
                         </div>
@@ -373,7 +376,7 @@
                     </div>
                     <div>
                         <p class="text-white opacity-60 mb-0" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;">Sub Program</p>
-                        <h5 class="fw-bold text-white mb-0 fs-6"><span class="sub-num">{{ $program->prefix ? $program->prefix . '.' : '' }}{{ $loop->iteration }}</span>. {{ $sub->name }}</h5>
+                        <h5 class="fw-bold text-white mb-0 fs-6"><span class="sub-num">{{ $program->prefix ? $program->prefix . '.' : '' }}{{ $loop->iteration }}</span> {{ $sub->name }}</h5>
                         @if($sub->description)
                             <div class="text-white-50 mt-1" style="font-size: 0.68rem;">{{ Str::limit($sub->description, 80) }}</div>
                         @endif
@@ -446,6 +449,13 @@
                                 onclick="openAddMilestone({{ $sub->id }}, 'milestone')">
                             <i class="fa-solid fa-plus"></i> Milestone
                         </button>
+                        <button type="button"
+                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                                style="background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3); color: #fbbf24; font-size: 0.72rem;"
+                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                onclick="openAddMilestone({{ $sub->id }}, 'divider')">
+                            <i class="fa-solid fa-minus"></i> Section Divider
+                        </button>
                     </div>
                     @endif
                     {{-- Delete Sub Program --}}
@@ -463,18 +473,79 @@
                 <div style="height: 4px; background: #e2e8f0;">
                     <div style="width: {{ $subAvg }}%; height: 100%; background: linear-gradient(to right, #3b82f6, #6366f1);"></div>
                 </div>
-                <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body milestones-container" data-sub-id="{{ $sub->id }}" id="milestones-{{ $sub->id }}">
-                @php $mCount = 0; $krCount = 0; @endphp
-                @forelse($sub->milestones as $ms)
+                @php 
+                    $mGroup = 1; 
+                    $mCount = 0; 
+                    $krCount = 0; 
+
+                    $actualMilestones = $sub->milestones->where('type', '!=', 'key_result');
+                    $keyResults = $sub->milestones->where('type', '===', 'key_result');
+                    $milestoneGroups = [
+                        'milestones' => $actualMilestones,
+                        'key_results' => $keyResults
+                    ];
+                @endphp
+                @foreach($milestoneGroups as $groupType => $msCollection)
+                <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body {{ $groupType === 'key_results' ? 'key-results-container border-top border-2' : 'milestones-container' }}" data-sub-id="{{ $sub->id }}" id="{{ $groupType }}-{{ $sub->id }}" {!! $groupType === 'key_results' ? 'style="border-style: dashed !important; border-color: #cbd5e1 !important; min-height: 50px;"' : '' !!}>
+                @if($groupType === 'key_results')
+                    <h6 class="text-danger fw-bold mb-0 mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-bullseye me-1"></i> KEY RESULTS</span></h6>
+                @endif
+                @forelse($msCollection as $ms)
                 @php
-                    if($ms->type === 'key_result') $krCount++; else $mCount++;
-                    $msNum = ($ms->type === 'key_result' ? 'KR.1.' . $krCount : 'M.1.' . $mCount);
-                    $actPrefix = ($ms->type === 'key_result' ? $krCount : $mCount);
+                    if($ms->type === 'divider') {
+                        // A divider bumps the group number and resets the count for milestones ONLY
+                        $mGroup++;
+                        $mCount = 0;
+                        
+                        $msNum = ''; // Dividers have no number
+                        $actPrefix = '';
+                    } else {
+                        if($ms->type === 'key_result') {
+                            $krCount++;
+                            $msNum = 'KR.' . $krCount;
+                            $actPrefix = $krCount;
+                        } else {
+                            $mCount++;
+                            $msNum = 'M.' . $mGroup . '.' . $mCount;
+                            $actPrefix = $mGroup . '.' . $mCount;
+                        }
+                    }
 
                     $msActs  = $ms->activities;
                     $msTotal = $msActs->count();
                     $msAvg   = round($calcMsProgress($ms));
                 @endphp
+                
+                @if($ms->type === 'divider')
+                    {{-- DIVIDER RENDER --}}
+                    <div class="d-flex align-items-center mb-1 mt-2 milestone-card" data-sub="{{ $sub->id }}" data-id="{{ $ms->id }}" id="ms-{{ $ms->id }}">
+                        @if($userRole === 'administrator' || $userRole === 'manager')
+                        <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 ms-drag-handle" style="cursor: grab;"></i>
+                        @endif
+                        <div class="flex-grow-1 border-bottom border-2 border-warning opacity-50"></div>
+                        <div class="mx-3 fw-bold text-warning text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.1em;">
+                            {{ $ms->name }}
+                        </div>
+                        <div class="flex-grow-1 border-bottom border-2 border-warning opacity-50"></div>
+                        <div class="ms-3">
+                            @if($userRole === 'administrator' || $userRole === 'manager')
+                            <button type="button" class="btn btn-sm p-1" style="color: #4338ca; background: none; border: none; font-size: 0.75rem;" title="Edit Section Name"
+                                    data-bs-toggle="modal" data-bs-target="#modalEditMilestone"
+                                    onclick="openEditMilestone({{ $ms->id }}, {{ $sub->id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}', '{{ $ms->type }}')">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            @endif
+                            @if($userRole === 'administrator')
+                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Section"
+                                    onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus section divider ini?', () => { document.querySelector('#ms-{{ $ms->id }}').remove(); recalculateHierarchyNumbering(); })">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                            @endif
+                        </div>
+                        <span class="ms-num d-none" data-type="divider"></span>
+                    </div>
+                @else
+                    {{-- REGULAR MILESTONE / KR RENDER --}}
                 <div class="card border-0 shadow-sm overflow-hidden milestone-card mb-3" data-name="{{ strtolower($ms->name) }}" data-id="{{ $ms->id }}">
                     <div class="px-3 py-2 d-flex justify-content-between align-items-center" style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
                         @if($userRole === 'administrator' || $userRole === 'manager')
@@ -489,7 +560,7 @@
                             </div>
                             <div>
                                 <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $ms->type === 'key_result' ? 'Key Result' : 'Milestone' }}</p>
-                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $msNum }}</span>. {{ $ms->name }}
+                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $msNum }}</span> {{ $ms->name }}
                                     @if($ms->bobot !== null)
                                     <span class="ms-1 badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
                                         <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.5rem;"></i>{{ $ms->bobot }}%
@@ -578,7 +649,6 @@
                                     <th class="px-3 py-2 fw-semibold border-bottom text-muted text-center" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; width: 140px;">Progress</th>
                                     <th class="px-3 py-2 fw-semibold border-bottom text-muted text-center" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; width: 130px;">Status</th>
                                     <th class="px-3 py-2 fw-semibold border-bottom text-muted text-center" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; width: 120px;">Personnel</th>
-                                    <th class="px-3 py-2 fw-semibold border-bottom text-muted text-center" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; width: 70px;">Bobot</th>
                                     <th class="px-2 py-2 border-bottom" style="width: 70px;"></th>
                                 </tr>
                             </thead>
@@ -606,8 +676,11 @@
                                             @if($userRole === 'administrator' || $userRole === 'manager')
                                             <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 act-drag-handle" style="cursor: grab;"></i>
                                             @endif
+                                            <button class="btn btn-sm text-muted p-0 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAct{{ $act->id }}">
+                                                <i class="fa-solid fa-chevron-right fs-6 act-toggle-icon"></i>
+                                            </button>
                                             <div>
-                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $actPrefix }}.{{ $loop->iteration }}</span>. {{ $act->name }}</div>
+                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $actPrefix }}.{{ $loop->iteration }}</span> {{ $act->name }}</div>
                                                 @if($act->description)
                                                     <div class="text-muted" style="font-size: 0.68rem;">{{ Str::limit($act->description, 60) }}</div>
                                                 @endif
@@ -652,32 +725,25 @@
                                         <span class="text-muted opacity-40">—</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if($act->bobot !== null)
-                                        <span class="badge rounded-pill fw-bold" style="background: #ede9fe; color: #6d28d9; font-size: 0.65rem; border: 1px solid #ddd6fe;">
-                                            {{ $act->bobot }}%
-                                        </span>
-                                        @else
-                                        <span class="text-muted opacity-30" style="font-size: 0.75rem;">—</span>
-                                        @endif
-                                    </td>
                                     <td class="px-2 py-2 text-center">
                                         <div class="d-flex gap-1 justify-content-center">
                                             @if($userRole === 'administrator' || $userRole === 'manager')
                                             <button type="button"
                                                     class="btn btn-sm p-1"
-                                                    style="color: #6366f1; background: none; border: none; font-size: 0.75rem;"
-                                                    title="Duplikat Activity"
+                                                    style="color: #059669; background: none; border: none; font-size: 0.75rem;"
+                                                    title="Tambah Sub Activity"
+                                                    data-bs-toggle="modal" data-bs-target="#modalAddSubActivity"
+                                                    onclick="setSubActivityParent({{ $act->id }}, '{{ addslashes($act->name) }}')">
+                                                <i class="fa-solid fa-plus"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm p-1" style="color: #4338ca; background: none; border: none; font-size: 0.75rem;" title="Edit Activity"
+                                                    data-bs-toggle="modal" data-bs-target="#modalEditActivity"
+                                                    onclick="openEditActivity({{ $act->id }}, {{ $ms->id }}, '{{ addslashes($act->name) }}', '{{ addslashes($act->description ?? '') }}', '{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}', '{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}', '{{ $act->progress }}', '{{ $act->status }}', '{{ addslashes($act->uic ?? '') }}', '{{ addslashes($act->pic ?? '') }}')">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm p-1" style="color: #10b981; background: none; border: none; font-size: 0.75rem;" title="Duplikasi Activity"
                                                     onclick="openDuplicateModal('activity', {{ $act->id }}, '{{ addslashes($act->name) }}')">
                                                 <i class="fa-solid fa-copy"></i>
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-sm p-1"
-                                                    style="color: #4338ca; background: none; border: none; font-size: 0.75rem;"
-                                                    title="Edit Activity"
-                                                    data-bs-toggle="modal" data-bs-target="#modalEditActivity"
-                                                    onclick="openEditActivity({{ $act->id }}, {{ $ms->id }}, '{{ addslashes($act->name) }}', '{{ $act->bobot ?? '' }}', '{{ addslashes($act->description ?? '') }}', '{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}', '{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}', '{{ $act->progress }}', '{{ $act->status }}', '{{ addslashes($act->uic ?? '') }}', '{{ addslashes($act->pic ?? '') }}')">
-                                                <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
                                             <button type="button"
                                                     class="btn btn-sm p-1"
@@ -692,9 +758,92 @@
                                             @endif
                                             @if($userRole === 'administrator')
                                             <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Activity"
-                                                    onclick="deleteHierarchyItem('{{ route('activities.destroy', $act->id) }}', 'Hapus activity ini?', () => { document.querySelector('.activity-item[data-id=\'{{ $act->id }}\']').remove(); })">
+                                                    onclick="deleteHierarchyItem('{{ route('activities.destroy', $act->id) }}', 'Hapus activity ini?', () => { refreshPageContent(); })">
                                                 <i class="fa-solid fa-trash-can"></i>
                                             </button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{-- Sub Activities Row --}}
+                                <tr id="collapseAct{{ $act->id }}" class="collapse collapse-act">
+                                    <td colspan="6" class="p-0 border-0">
+                                        <div class="bg-light p-3 border-start border-4 border-primary ms-5 mb-3 rounded-end shadow-sm">
+                                            @if($act->subActivities->count() > 0)
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.75rem;">
+                                                        <tbody class="sub-activities-container" data-act-id="{{ $act->id }}">
+                                                            @foreach($act->subActivities as $subAct)
+                                                                @php
+                                                                    $subSys = $subAct->system_status;
+                                                                    $subSysColor = '#64748b';
+                                                                    if($subSys == 'Active')    $subSysColor = '#4f46e5';
+                                                                    if($subSys == 'Delayed')   $subSysColor = '#dc2626';
+                                                                    if($subSys == 'Completed') $subSysColor = '#059669';
+                                                                    $subBarColor = $subAct->progress >= 100 ? '#059669' : ($subAct->progress >= 60 ? '#4f46e5' : ($subAct->progress > 0 ? '#d97706' : '#cbd5e1'));
+                                                                @endphp
+                                                                <tr class="sub-activity-item border-bottom" data-id="{{ $subAct->id }}">
+                                                                    <td style="width: 35%;">
+                                                                        <div class="d-flex align-items-center">
+                                                                            @if($userRole === 'administrator' || $userRole === 'manager')
+                                                                            <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-2 sub-act-drag-handle" style="cursor: grab;"></i>
+                                                                            @endif
+                                                                            <div>
+                                                                                <div class="fw-semibold text-dark"><span class="sub-act-num">{{ $actPrefix }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span> {{ $subAct->name }}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center text-muted" style="width: 20%;">
+                                                                        {{ $subAct->start_date ? $subAct->start_date->format('d M y') : '-' }} <i class="fa-solid fa-arrow-right mx-1 opacity-50" style="font-size:0.6rem;"></i> {{ $subAct->end_date ? $subAct->end_date->format('d M y') : '-' }}
+                                                                    </td>
+                                                                    <td class="text-center" style="width: 15%;">
+                                                                        <div class="d-flex align-items-center gap-2 justify-content-center">
+                                                                            <div class="progress" style="height: 5px; width: 40px; background: #e2e8f0; border-radius: 99px;">
+                                                                             <div class="progress-bar" role="progressbar" style="width: {{ $subAct->progress }}%; background-color: {{ $subBarColor }};"></div>
+                                                                            </div>
+                                                                            <span class="fw-bold" style="font-size: 0.7rem; color: {{ $subBarColor }};">{{ $subAct->progress }}%</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center" style="width: 15%;">
+                                                                        <span class="badge rounded-2 fw-semibold text-white px-2 py-1" style="font-size: 0.58rem; background: {{ $subSysColor }};">
+                                                                            ⚙ {{ $subSys }}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="text-end" style="width: 15%;">
+                                                                        <div class="d-flex gap-1 justify-content-end">
+                                                                            @if($userRole === 'administrator' || $userRole === 'manager')
+                                                                            <button type="button" class="btn btn-sm p-1" style="color: #4338ca; background: none; border: none; font-size: 0.75rem;" title="Edit Sub Activity"
+                                                                                    data-bs-toggle="modal" data-bs-target="#modalEditSubActivity"
+                                                                                    onclick="openEditSubActivity({{ $subAct->id }}, {{ $act->id }}, '{{ addslashes($subAct->name) }}', '{{ addslashes($subAct->description ?? '') }}', '{{ $subAct->start_date ? $subAct->start_date->format('Y-m-d') : '' }}', '{{ $subAct->end_date ? $subAct->end_date->format('Y-m-d') : '' }}', '{{ $subAct->progress }}', '{{ $subAct->status }}', '{{ addslashes($subAct->uic ?? '') }}', '{{ addslashes($subAct->pic ?? '') }}')">
+                                                                                <i class="fa-solid fa-pen-to-square"></i>
+                                                                            </button>
+                                                                            <button type="button" class="btn btn-sm p-1" style="color: #10b981; background: none; border: none; font-size: 0.75rem;" title="Duplikasi Sub Activity"
+                                                                                    onclick="openDuplicateModal('sub_activity', {{ $subAct->id }}, '{{ addslashes($subAct->name) }}')">
+                                                                                <i class="fa-solid fa-copy"></i>
+                                                                            </button>
+                                                                            <button type="button" class="btn btn-sm p-1" style="color: #92400e; background: none; border: none; font-size: 0.75rem;" title="Lampiran Sub Activity"
+                                                                                    onclick="openAttachmentModal('sub_activity', {{ $subAct->id }}, '{{ addslashes($subAct->name) }}')">
+                                                                                <i class="fa-solid fa-paperclip"></i>
+                                                                                @if($subAct->attachments->count() > 0)
+                                                                                <span class="badge rounded-pill" style="background: #f59e0b; color: white; font-size: 0.5rem; position: relative; top: -5px;">{{ $subAct->attachments->count() }}</span>
+                                                                                @endif
+                                                                            </button>
+                                                                            @endif
+                                                                            @if($userRole === 'administrator')
+                                                                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Sub Activity"
+                                                                                    onclick="deleteHierarchyItem('{{ route('sub_activities.destroy', $subAct->id) }}', 'Hapus sub activity ini?', () => { refreshPageContent(); })">
+                                                                                <i class="fa-solid fa-trash-can"></i>
+                                                                            </button>
+                                                                            @endif
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @else
+                                                <p class="small text-muted mb-0 fst-italic">Belum ada sub activity.</p>
                                             @endif
                                         </div>
                                     </td>
@@ -711,7 +860,9 @@
                     @endif
                     </div> <!-- End collapseMs -->
                 </div> <!-- End milestone-card -->
+                @endif
                 @empty
+                    @if($groupType === 'milestones')
                     <div class="text-center py-4 rounded-3 border border-2 border-dashed bg-white" style="border-color: #cbd5e1 !important;">
                         <i class="fa-solid fa-flag text-muted opacity-30 fs-3 d-block mb-2"></i>
                         <p class="small text-muted mb-2">No milestones yet.</p>
@@ -721,8 +872,14 @@
                             <i class="fa-solid fa-plus me-1"></i> Add Milestone
                         </button>
                     </div>
+                    @else
+                    <div class="text-center py-3 rounded-3 border border-2 border-dashed bg-white" style="border-color: #fecaca !important;">
+                        <p class="small text-muted mb-0">Belum ada Key Result.</p>
+                    </div>
+                    @endif
                 @endforelse
                 </div> <!-- End sub-body -->
+                @endforeach
             </div> <!-- End collapseSub -->
         </div> <!-- End sub-card -->
         @empty
@@ -1165,27 +1322,29 @@
                     <input type="hidden" name="sub_program_id" id="milestoneSubProgramId" value="">
                     <input type="hidden" name="type" id="addMilestoneType" value="milestone">
                     <div class="row g-2 mb-3">
-                        <div class="col-9">
+                        <div class="col-9" id="addMilestoneNameContainer">
                             <label class="form-label fw-semibold small" id="milestoneModalNameLabel">Nama Milestone <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Desain Database" required>
                         </div>
-                        <div class="col-3">
+                        <div class="col-3" id="addMilestoneBobotContainer">
                             <label class="form-label fw-semibold small">Bobot <span class="text-muted fw-normal">(%)</span></label>
                             <input type="number" name="bobot" class="form-control form-control-sm" placeholder="—" min="0" max="100" step="0.01">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Deskripsi</label>
-                        <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                            <input type="date" name="start_date" class="form-control form-control-sm">
+                    <div id="addMilestoneExtraFields">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Deskripsi</label>
+                            <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                            <input type="date" name="end_date" class="form-control form-control-sm">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Tanggal Mulai</label>
+                                <input type="date" name="start_date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Tanggal Selesai</label>
+                                <input type="date" name="end_date" class="form-control form-control-sm">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1219,13 +1378,9 @@
                 </div>
                 <div class="modal-body px-4 py-3">
                     <div class="row g-3">
-                        <div class="col-9">
+                        <div class="col-12">
                             <label class="form-label fw-semibold small">Nama Activity <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Desain ERD" required>
-                        </div>
-                        <div class="col-3">
-                            <label class="form-label fw-semibold small">Bobot <span class="text-muted fw-normal">(%)</span></label>
-                            <input type="number" name="bobot" class="form-control form-control-sm" placeholder="—" min="0" max="100" step="0.01">
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold small">Deskripsi</label>
@@ -1406,27 +1561,29 @@
                 </div>
                 <div class="modal-body px-4 py-3">
                     <div class="row g-2 mb-3">
-                        <div class="col-9">
-                            <label class="form-label fw-semibold small">Nama Milestone <span class="text-danger">*</span></label>
+                        <div class="col-9" id="editMilestoneNameContainer">
+                            <label class="form-label fw-semibold small" id="editMilestoneModalNameLabel">Nama Milestone <span class="text-danger">*</span></label>
                             <input type="text" name="name" id="editMilestoneName" class="form-control form-control-sm" required>
                         </div>
-                        <div class="col-3">
+                        <div class="col-3" id="editMilestoneBobotContainer">
                             <label class="form-label fw-semibold small">Bobot <span class="text-muted fw-normal">(%)</span></label>
                             <input type="number" name="bobot" id="editMilestoneBobot" class="form-control form-control-sm" placeholder="—" min="0" max="100" step="0.01">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Deskripsi</label>
-                        <textarea name="description" id="editMilestoneDesc" class="form-control form-control-sm" rows="2"></textarea>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai</label>
-                            <input type="date" name="start_date" id="editMilestoneStart" class="form-control form-control-sm">
+                    <div id="editMilestoneExtraFields">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Deskripsi</label>
+                            <textarea name="description" id="editMilestoneDesc" class="form-control form-control-sm" rows="2"></textarea>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai</label>
-                            <input type="date" name="end_date" id="editMilestoneEnd" class="form-control form-control-sm">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Tanggal Mulai</label>
+                                <input type="date" name="start_date" id="editMilestoneStart" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Tanggal Selesai</label>
+                                <input type="date" name="end_date" id="editMilestoneEnd" class="form-control form-control-sm">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1462,24 +1619,46 @@
                             </label>
                         </div>
                         <div class="form-check mb-2" id="dupWithActivitiesContainer">
-                            <input class="form-check-input" type="checkbox" name="with_activities" id="dupWithActivitiesSub" value="1" checked>
+                            <input class="form-check-input" type="checkbox" name="with_activities_sub" id="dupWithActivitiesSub" value="1" checked>
                             <label class="form-check-label" for="dupWithActivitiesSub">
                                 Sertakan Activity
+                            </label>
+                        </div>
+                        <div class="form-check mb-2" id="dupWithSubActivitiesContainerSub">
+                            <input class="form-check-input" type="checkbox" name="with_sub_activities_sub" id="dupWithSubActivitiesSub" value="1" checked>
+                            <label class="form-check-label" for="dupWithSubActivitiesSub">
+                                Sertakan Sub Activity
                             </label>
                         </div>
                     </div>
 
                     <div id="duplicateOptionsMs" class="d-none">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="with_activities" id="dupWithActivitiesMs" value="1" checked>
+                        <div class="form-check mb-2" id="dupWithActivitiesContainerMs">
+                            <input class="form-check-input" type="checkbox" name="with_activities_ms" id="dupWithActivitiesMs" value="1" checked>
                             <label class="form-check-label" for="dupWithActivitiesMs">
                                 Sertakan Activity
+                            </label>
+                        </div>
+                        <div class="form-check mb-2" id="dupWithSubActivitiesContainerMs">
+                            <input class="form-check-input" type="checkbox" name="with_sub_activities_ms" id="dupWithSubActivitiesMs" value="1" checked>
+                            <label class="form-check-label" for="dupWithSubActivitiesMs">
+                                Sertakan Sub Activity
                             </label>
                         </div>
                     </div>
 
                     <div id="duplicateOptionsAct" class="d-none">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="with_sub_activities_act" id="dupWithSubActivitiesAct" value="1" checked>
+                            <label class="form-check-label" for="dupWithSubActivitiesAct">
+                                Sertakan Sub Activity
+                            </label>
+                        </div>
                         <p class="text-muted small">Activity akan diduplikasi langsung ke milestone yang sama.</p>
+                    </div>
+
+                    <div id="duplicateOptionsSubAct" class="d-none">
+                        <p class="text-muted small">Sub Activity akan diduplikasi langsung ke activity yang sama.</p>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light p-3">
@@ -1512,13 +1691,9 @@
                 </div>
                 <div class="modal-body px-4 py-3">
                     <div class="row g-3">
-                        <div class="col-9">
+                        <div class="col-12">
                             <label class="form-label fw-semibold small">Nama Activity <span class="text-danger">*</span></label>
                             <input type="text" name="name" id="editActivityName" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-3">
-                            <label class="form-label fw-semibold small">Bobot <span class="text-muted fw-normal">(%)</span></label>
-                            <input type="number" name="bobot" id="editActivityBobot" class="form-control form-control-sm" placeholder="—" min="0" max="100" step="0.01">
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold small">Deskripsi</label>
@@ -1566,6 +1741,148 @@
     </div>
 </div>
 
+{{-- ADD Sub Activity --}}
+<div class="modal fade" id="modalAddSubActivity" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="addSubActivityForm" action="{{ route('sub_activities.store') }}" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('addSubActivityForm', 'modalAddSubActivity', (data) => { refreshPageContent(); })">
+                @csrf
+                <input type="hidden" name="activity_id" id="activity_id_for_sub_act">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #d1fae5;">
+                            <i class="fa-solid fa-plus text-success"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0">Add Sub Activity</h5>
+                            <p class="text-muted mb-0 small" id="subActivityModalActLabel"></p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Nama Sub Activity <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Buat Relasi Tabel" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Deskripsi</label>
+                            <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Opsional"></textarea>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
+                            <input type="date" name="end_date" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
+                            <input type="number" name="progress" class="form-control form-control-sm" value="0" min="0" max="100" required>
+                        </div>
+                        <div class="col-9">
+                            <label class="form-label fw-semibold small">Status Manual <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select form-select-sm" required>
+                                <option value="Draft" selected>Draft</option>
+                                <option value="To Do">To Do</option>
+                                <option value="On Progress">On Progress</option>
+                                <option value="On Hold">On Hold</option>
+                                <option value="Done">Done</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small"><i class="fa-solid fa-building me-1 opacity-50"></i> UIC</label>
+                            <input type="text" name="uic" class="form-control form-control-sm" placeholder="e.g. IT Dept">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small"><i class="fa-solid fa-user me-1 opacity-50"></i> PIC</label>
+                            <input type="text" name="pic" class="form-control form-control-sm" placeholder="e.g. John Doe">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-sm btn-success fw-semibold px-4"><i class="fa-solid fa-check me-1"></i> Simpan Sub Activity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- EDIT Sub Activity --}}
+<div class="modal fade" id="modalEditSubActivity" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="editSubActivityForm" action="" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('editSubActivityForm', 'modalEditSubActivity', (data) => { refreshPageContent(); })">
+                @csrf @method('PUT')
+                <input type="hidden" name="activity_id" id="editSubActivityActIdHidden">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #fef9c3;">
+                            <i class="fa-solid fa-pen-to-square" style="color: #ca8a04;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0">Edit Sub Activity</h5>
+                            <p class="text-muted mb-0 small" id="editSubActivityLabel"></p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Nama Sub Activity <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="editSubActivityName" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Deskripsi</label>
+                            <textarea name="description" id="editSubActivityDesc" class="form-control form-control-sm" rows="2"></textarea>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" id="editSubActivityStart" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
+                            <input type="date" name="end_date" id="editSubActivityEnd" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label fw-semibold small">Progress (%) <span class="text-danger">*</span></label>
+                            <input type="number" name="progress" id="editSubActivityProgress" class="form-control form-control-sm" min="0" max="100" required>
+                        </div>
+                        <div class="col-9">
+                            <label class="form-label fw-semibold small">Status Manual <span class="text-danger">*</span></label>
+                            <select name="status" id="editSubActivityStatus" class="form-select form-select-sm" required>
+                                <option value="Draft">Draft</option>
+                                <option value="To Do">To Do</option>
+                                <option value="On Progress">On Progress</option>
+                                <option value="On Hold">On Hold</option>
+                                <option value="Done">Done</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small"><i class="fa-solid fa-building me-1 opacity-50"></i> UIC</label>
+                            <input type="text" name="uic" id="editSubActivityUic" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small"><i class="fa-solid fa-user me-1 opacity-50"></i> PIC</label>
+                            <input type="text" name="pic" id="editSubActivityPic" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-sm btn-warning fw-semibold px-4 text-dark"><i class="fa-solid fa-save me-1"></i> Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
     .border-dashed { border-style: dashed !important; }
     /* Fix SweetAlert2 breaking fixed layout */
@@ -1589,10 +1906,23 @@
             document.getElementById('modalAddMilestoneLabel').textContent = 'Tambah Key Result';
             document.getElementById('milestoneModalNameLabel').innerHTML = 'Nama Key Result <span class="text-danger">*</span>';
             document.getElementById('milestoneModalTypeDesc').textContent = 'Hasil kunci terukur yang mendukung pencapaian sub program.';
+            document.getElementById('addMilestoneExtraFields').classList.remove('d-none');
+            document.getElementById('addMilestoneBobotContainer').classList.remove('d-none');
+            document.getElementById('addMilestoneNameContainer').className = 'col-9';
+        } else if (type === 'divider') {
+            document.getElementById('modalAddMilestoneLabel').textContent = 'Tambah Section Divider';
+            document.getElementById('milestoneModalNameLabel').innerHTML = 'Nama Section Divider <span class="text-danger">*</span>';
+            document.getElementById('milestoneModalTypeDesc').textContent = 'Garis pembatas untuk mengelompokkan milestone dan mereset penomoran.';
+            document.getElementById('addMilestoneExtraFields').classList.add('d-none');
+            document.getElementById('addMilestoneBobotContainer').classList.add('d-none');
+            document.getElementById('addMilestoneNameContainer').className = 'col-12';
         } else {
             document.getElementById('modalAddMilestoneLabel').textContent = 'Tambah Milestone';
             document.getElementById('milestoneModalNameLabel').innerHTML = 'Nama Milestone <span class="text-danger">*</span>';
             document.getElementById('milestoneModalTypeDesc').textContent = 'Menghubungkan target ke Sub Program tertentu.';
+            document.getElementById('addMilestoneExtraFields').classList.remove('d-none');
+            document.getElementById('addMilestoneBobotContainer').classList.remove('d-none');
+            document.getElementById('addMilestoneNameContainer').className = 'col-9';
         }
     }
 
@@ -1605,6 +1935,12 @@
         document.getElementById('activityMilestoneId').value = msId;
         document.getElementById('activityMilestoneLabel').textContent = 'Milestone: ' + msName;
     }
+    
+    function setSubActivityParent(actId, actName) {
+        document.getElementById('activity_id_for_sub_act').value = actId;
+        document.getElementById('subActivityModalActLabel').textContent = 'Activity: ' + actName;
+    }
+
 
     // ---- EDIT Program ----
     function openEditProgram(id, prefix, theme, name, desc, start, end) {
@@ -1630,7 +1966,7 @@
     }
 
     // ---- EDIT Milestone ----
-    function openEditMilestone(id, subProgramId, name, bobot, desc, start, end) {
+    function openEditMilestone(id, subProgramId, name, bobot, desc, start, end, type = 'milestone') {
         document.getElementById('editMilestoneForm').action = '/milestones/' + id;
         document.getElementById('editMilestoneLabel').textContent = 'Editing: ' + name;
         document.getElementById('editMilestoneSubProgramId').value = subProgramId;
@@ -1639,15 +1975,26 @@
         document.getElementById('editMilestoneDesc').value = desc;
         document.getElementById('editMilestoneStart').value = start;
         document.getElementById('editMilestoneEnd').value = end;
+        
+        if (type === 'divider') {
+            document.getElementById('editMilestoneModalNameLabel').innerHTML = 'Nama Section Divider <span class="text-danger">*</span>';
+            document.getElementById('editMilestoneExtraFields').classList.add('d-none');
+            document.getElementById('editMilestoneBobotContainer').classList.add('d-none');
+            document.getElementById('editMilestoneNameContainer').className = 'col-12';
+        } else {
+            document.getElementById('editMilestoneModalNameLabel').innerHTML = 'Nama Milestone <span class="text-danger">*</span>';
+            document.getElementById('editMilestoneExtraFields').classList.remove('d-none');
+            document.getElementById('editMilestoneBobotContainer').classList.remove('d-none');
+            document.getElementById('editMilestoneNameContainer').className = 'col-9';
+        }
     }
 
     // ---- EDIT Activity ----
-    function openEditActivity(id, milestoneId, name, bobot, desc, start, end, progress, status, uic, pic) {
+    function openEditActivity(id, milestoneId, name, desc, start, end, progress, status, uic, pic) {
         document.getElementById('editActivityForm').action = '/activities/' + id;
         document.getElementById('editActivityLabel').textContent = 'Editing: ' + name;
         document.getElementById('editActivityMilestoneIdHidden').value = milestoneId;
         document.getElementById('editActivityName').value = name;
-        document.getElementById('editActivityBobot').value = bobot || '';
         document.getElementById('editActivityDesc').value = desc;
         document.getElementById('editActivityStart').value = start;
         document.getElementById('editActivityEnd').value = end;
@@ -1656,6 +2003,22 @@
         document.getElementById('editActivityUic').value = uic;
         document.getElementById('editActivityPic').value = pic;
     }
+
+    // ---- EDIT Sub Activity ----
+    function openEditSubActivity(id, actId, name, desc, start, end, progress, status, uic, pic) {
+        document.getElementById('editSubActivityForm').action = '/sub_activities/' + id;
+        document.getElementById('editSubActivityLabel').textContent = 'Editing: ' + name;
+        document.getElementById('editSubActivityActIdHidden').value = actId;
+        document.getElementById('editSubActivityName').value = name;
+        document.getElementById('editSubActivityDesc').value = desc;
+        document.getElementById('editSubActivityStart').value = start;
+        document.getElementById('editSubActivityEnd').value = end;
+        document.getElementById('editSubActivityProgress').value = progress;
+        document.getElementById('editSubActivityStatus').value = status;
+        document.getElementById('editSubActivityUic').value = uic;
+        document.getElementById('editSubActivityPic').value = pic;
+    }
+
 
     // ---- AJAX CRUD Helpers ----
     async function submitAjaxForm(formId, modalId, onSuccess) {
@@ -1934,6 +2297,23 @@
             });
         });
 
+        // 2.5. Sortable Key Results
+        document.querySelectorAll('.key-results-container').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                group: 'key_results',
+                handle: '.ms-drag-handle',
+                ghostClass: 'bg-danger-subtle',
+                onEnd: function (evt) {
+                    const toContainer = evt.to;
+                    const order = Array.from(toContainer.querySelectorAll('.milestone-card')).map(el => el.dataset.id);
+                    const newParentId = toContainer.dataset.subId;
+                    updateHierarchyOrder('key_result', order, newParentId);
+                    recalculateHierarchyNumbering();
+                }
+            });
+        });
+
         // 3. Sortable Activities
         document.querySelectorAll('.activities-container').forEach(container => {
             new Sortable(container, {
@@ -1946,6 +2326,23 @@
                     const order = Array.from(toContainer.querySelectorAll('.activity-item')).map(el => el.dataset.id);
                     const newParentId = toContainer.dataset.msId;
                     updateHierarchyOrder('activity', order, newParentId);
+                    recalculateHierarchyNumbering();
+                }
+            });
+        });
+
+        // 4. Sortable Sub Activities
+        document.querySelectorAll('.sub-activities-container').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                group: 'sub_activities',
+                handle: '.sub-act-drag-handle',
+                ghostClass: 'bg-primary-subtle',
+                onEnd: function (evt) {
+                    const toContainer = evt.to;
+                    const order = Array.from(toContainer.querySelectorAll('.sub-activity-item')).map(el => el.dataset.id);
+                    const newParentId = toContainer.dataset.actId;
+                    updateHierarchyOrder('sub_activity', order, newParentId);
                     recalculateHierarchyNumbering();
                 }
             });
@@ -1964,20 +2361,24 @@
         if (type === 'sub_program') title = 'Sub Program';
         if (type === 'milestone')   title = 'Milestone';
         if (type === 'activity')    title = 'Activity';
+        if (type === 'sub_activity') title = 'Sub Activity';
         document.getElementById('duplicateEntityTitle').textContent = title;
 
         // Toggle options and disable hidden inputs
         const optionsSub = document.getElementById('duplicateOptionsSub');
         const optionsMs  = document.getElementById('duplicateOptionsMs');
         const optionsAct = document.getElementById('duplicateOptionsAct');
+        const optionsSubAct = document.getElementById('duplicateOptionsSubAct');
 
         optionsSub.classList.add('d-none');
         optionsMs.classList.add('d-none');
         optionsAct.classList.add('d-none');
+        optionsSubAct.classList.add('d-none');
 
         // Disable all inputs initially
         optionsSub.querySelectorAll('input').forEach(i => i.disabled = true);
         optionsMs.querySelectorAll('input').forEach(i => i.disabled = true);
+        optionsAct.querySelectorAll('input').forEach(i => i.disabled = true);
 
         if (type === 'sub_program') {
             optionsSub.classList.remove('d-none');
@@ -1986,16 +2387,49 @@
             // Logic for auto-toggling activity based on milestone
             const msCheck = document.getElementById('dupWithMilestones');
             const actContainer = document.getElementById('dupWithActivitiesContainer');
+            const subActCheck = document.getElementById('dupWithActivitiesSub');
+            const subActContainer = document.getElementById('dupWithSubActivitiesContainerSub');
+
             msCheck.onchange = () => {
                 actContainer.style.opacity = msCheck.checked ? '1' : '0.5';
                 document.getElementById('dupWithActivitiesSub').disabled = !msCheck.checked;
+                // trigger cascade
+                if (!msCheck.checked) {
+                    document.getElementById('dupWithActivitiesSub').checked = false;
+                }
+                subActCheck.onchange();
             };
+            subActCheck.onchange = () => {
+                const actEnabledAndChecked = !document.getElementById('dupWithActivitiesSub').disabled && document.getElementById('dupWithActivitiesSub').checked;
+                subActContainer.style.opacity = actEnabledAndChecked ? '1' : '0.5';
+                document.getElementById('dupWithSubActivitiesSub').disabled = !actEnabledAndChecked;
+                if (!actEnabledAndChecked) {
+                    document.getElementById('dupWithSubActivitiesSub').checked = false;
+                }
+            };
+
             msCheck.onchange();
         } else if (type === 'milestone') {
             optionsMs.classList.remove('d-none');
             optionsMs.querySelectorAll('input').forEach(i => i.disabled = false);
-        } else {
+
+            const amsCheck = document.getElementById('dupWithActivitiesMs');
+            const subMsContainer = document.getElementById('dupWithSubActivitiesContainerMs');
+            
+            amsCheck.onchange = () => {
+                subMsContainer.style.opacity = amsCheck.checked ? '1' : '0.5';
+                document.getElementById('dupWithSubActivitiesMs').disabled = !amsCheck.checked;
+                if (!amsCheck.checked) {
+                    document.getElementById('dupWithSubActivitiesMs').checked = false;
+                }
+            };
+            amsCheck.onchange();
+
+        } else if (type === 'activity') {
             optionsAct.classList.remove('d-none');
+            optionsAct.querySelectorAll('input').forEach(i => i.disabled = false);
+        } else {
+            optionsSubAct.classList.remove('d-none');
         }
 
         new bootstrap.Modal(document.getElementById('modalDuplicate')).show();
@@ -2048,7 +2482,11 @@
 
             // Recalculate Milestones within this sub program
             const msCards = subCard.querySelectorAll('.milestone-card');
+            
+            let mGroup = 1;
             let mCounter = 0;
+            
+            let krGroup = 1;
             let krCounter = 0;
             
             msCards.forEach((msCard) => {
@@ -2057,24 +2495,43 @@
                 
                 let msNum = '';
                 let actPrefix = '';
-                if (type === 'key_result' || type === 'key_result') { // Keep it simple based on data-type
+                
+                if (type === 'divider') {
+                    mGroup++;
+                    mCounter = 0;
+                    if (msNumEl) msNumEl.textContent = '';
+                } else if (type === 'key_result') {
                     krCounter++;
-                    msNum = 'KR.1.' + krCounter;
+                    msNum = 'KR.' + krCounter;
                     actPrefix = krCounter;
+                    if (msNumEl) msNumEl.textContent = msNum;
                 } else {
                     mCounter++;
-                    msNum = 'M.1.' + mCounter;
-                    actPrefix = mCounter;
+                    msNum = 'M.' + mGroup + '.' + mCounter;
+                    actPrefix = mGroup + '.' + mCounter;
+                    if (msNumEl) msNumEl.textContent = msNum;
                 }
-                
-                if (msNumEl) msNumEl.textContent = msNum;
 
                 // Recalculate Activities within this milestone
                 const actItems = msCard.querySelectorAll('.activity-item');
                 actItems.forEach((actItem, actIdx) => {
                     const actNumEl = actItem.querySelector('.act-num');
+                    const actLevel = actPrefix + '.' + (actIdx + 1);
                     if (actNumEl) {
-                        actNumEl.textContent = actPrefix + '.' + (actIdx + 1);
+                        actNumEl.textContent = actLevel;
+                    }
+
+                    // Recalculate Sub-Activities within this Activity
+                    const actId = actItem.dataset.id;
+                    const subActContainer = document.querySelector(`.sub-activities-container[data-act-id="${actId}"]`);
+                    if (subActContainer) {
+                        const subActItems = subActContainer.querySelectorAll('.sub-activity-item');
+                        subActItems.forEach((subItem, subIdx) => {
+                            const subNumEl = subItem.querySelector('.sub-act-num');
+                            if (subNumEl) {
+                                subNumEl.textContent = actLevel + '.' + (subIdx + 1);
+                            }
+                        });
                     }
                 });
             });

@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\ProgramController;
 use App\Http\Controllers\Web\SubProgramController;
 use App\Http\Controllers\Web\MilestoneController;
 use App\Http\Controllers\Web\ActivityController;
+use App\Http\Controllers\Web\SubActivityController;
 use App\Http\Controllers\Web\AttachmentController;
 use App\Http\Controllers\Web\AgendaController;
 
@@ -41,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('sub_programs', SubProgramController::class);
     Route::resource('milestones', MilestoneController::class);
     Route::resource('activities', ActivityController::class);
+    Route::resource('sub_activities', SubActivityController::class);
 
     // Attachments (polymorphic)
     Route::post('/attachments', [AttachmentController::class, 'store'])->name('attachments.store');

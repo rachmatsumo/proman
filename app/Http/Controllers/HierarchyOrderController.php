@@ -12,7 +12,7 @@ class HierarchyOrderController extends Controller
     public function updateOrder(Request $request)
     {
         $request->validate([
-            'type' => 'required|in:sub_program,milestone,activity',
+            'type' => 'required|in:sub_program,milestone,key_result,activity,sub_activity',
             'order' => 'required|array',
             'order.*' => 'integer',
             'parent_id' => 'nullable|integer',
@@ -27,6 +27,10 @@ class HierarchyOrderController extends Controller
                 SubProgram::where('id', $id)->update(['sort_order' => $index]);
             } elseif ($type === 'milestone') {
                 $updateData = ['sort_order' => $index];
+                if ($parentId) $updateData['sub_program_id'] = $parentId;
+                Milestone::where('id', $id)->update($updateData);
+            } elseif ($type === 'key_result') {
+                $updateData = ['sort_order' => $index + 1000];
                 if ($parentId) $updateData['sub_program_id'] = $parentId;
                 Milestone::where('id', $id)->update($updateData);
             } elseif ($type === 'activity') {

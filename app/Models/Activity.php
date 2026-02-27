@@ -79,4 +79,9 @@ class Activity extends Model
     {
         return $this->morphMany(ActivityLog::class, 'loggable');
     }
+
+    public function subActivities()
+    {
+        return $this->hasMany(SubActivity::class)->orderBy('sort_order');
+    }
 }

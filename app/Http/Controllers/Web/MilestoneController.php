@@ -26,6 +26,17 @@ class MilestoneController extends Controller
     public function store(StoreMilestoneRequest $request)
     {
         $data = $request->validated();
+        
+        // Validate total weight
+        $currentWeight = Milestone::where('sub_program_id', $data['sub_program_id'])->sum('bobot');
+        if (($currentWeight + ($data['bobot'] ?? 0)) > 100) {
+            $msg = "Total bobot milestone dalam sub program ini tidak boleh melebihi 100%. (Saat ini: $currentWeight%)";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->withErrors(['bobot' => $msg])->withInput();
+        }
+
         $minOrder = Milestone::where('sub_program_id', $data['sub_program_id'])->min('sort_order') ?? 0;
         $data['sort_order'] = $minOrder - 1;
         
@@ -58,7 +69,22 @@ class MilestoneController extends Controller
     public function update(StoreMilestoneRequest $request, string $id)
     {
         $milestone = Milestone::findOrFail($id);
-        $milestone->update($request->validated());
+        $data = $request->validated();
+
+        // Validate total weight
+        $currentWeight = Milestone::where('sub_program_id', $milestone->sub_program_id)
+            ->where('id', '!=', $id)
+            ->sum('bobot');
+        
+        if (($currentWeight + ($data['bobot'] ?? 0)) > 100) {
+            $msg = "Total bobot milestone dalam sub program ini tidak boleh melebihi 100%. (Saat ini: $currentWeight%)";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->withErrors(['bobot' => $msg])->withInput();
+        }
+
+        $milestone->update($data);
 
         if ($request->wantsJson()) {
             return response()->json([
