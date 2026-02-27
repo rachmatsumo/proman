@@ -23,6 +23,7 @@ class StoreMilestoneRequest extends FormRequest
     {
         return [
             'sub_program_id' => 'required|exists:sub_programs,id',
+            'type' => 'nullable|string|in:milestone,key_result',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'bobot' => 'nullable|numeric|min:0|max:100',

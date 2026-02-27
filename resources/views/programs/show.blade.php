@@ -121,25 +121,32 @@
                 <i class="fa-solid fa-diagram-project"></i>
             </div>
             <div class="position-relative">
-                <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-4">
+                <div class="d-flex flex-column align-items-md-start justify-content-between gap-4">
                     <div>
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(255,255,255,0.15);">
                                 <i class="fa-solid fa-folder-open fs-4"></i>
                             </div>
                             <div>
-                                <p class="text-white opacity-60 mb-0" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;">Program</p>
-                                <h2 class="fs-4 fw-bold text-white mb-0">{{ $program->name }}</h2>
+                                <p class="text-white opacity-60 mb-0" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;">Inisiatif Program</p>
+                                <h2 class="fs-4 fw-bold text-white mb-0">@if($program->prefix){{ $program->prefix }} @endif{{ $program->name }}</h2>
+                                @if($program->theme)
+                                    <div class="mt-1 mb-2">
+                                        <span class="badge rounded-pill fw-semibold" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem; letter-spacing: 0.05em;">
+                                            <i class="fa-solid fa-tag me-1 opacity-75"></i>{{ $program->theme }}
+                                        </span>
+                                    </div>
+                                @endif
+                                @if($program->description)
+                                    <p class="text-white opacity-75 mb-3" style="font-size: 0.85rem; max-width: 600px;">{{ $program->description }}</p>
+                                @endif
+                                <div class="d-flex align-items-center gap-2 text-white opacity-75" style="font-size: 0.78rem;">
+                                    <i class="fa-regular fa-calendar me-1"></i>
+                                    <span>{{ $program->start_date ? $program->start_date->format('d M Y') : 'N/A' }}</span>
+                                    <span class="opacity-40 mx-1">→</span>
+                                    <span>{{ $program->end_date ? $program->end_date->format('d M Y') : 'N/A' }}</span>
+                                </div>
                             </div>
-                        </div>
-                        @if($program->description)
-                            <p class="text-white opacity-75 mb-3" style="font-size: 0.85rem; max-width: 600px;">{{ $program->description }}</p>
-                        @endif
-                        <div class="d-flex align-items-center gap-2 text-white opacity-75" style="font-size: 0.78rem;">
-                            <i class="fa-regular fa-calendar me-1"></i>
-                            <span>{{ $program->start_date ? $program->start_date->format('d M Y') : 'N/A' }}</span>
-                            <span class="opacity-40 mx-1">→</span>
-                            <span>{{ $program->end_date ? $program->end_date->format('d M Y') : 'N/A' }}</span>
                         </div>
                     </div>
                     <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
@@ -147,7 +154,7 @@
                         @if($userRole === 'administrator' || $userRole === 'manager')
                         <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
                                 style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white;"
-                                onclick="openEditProgram({{ $program->id }}, '{{ addslashes($program->name) }}', '{{ addslashes($program->description ?? '') }}', '{{ $program->start_date ? $program->start_date->format('Y-m-d') : '' }}', '{{ $program->end_date ? $program->end_date->format('Y-m-d') : '' }}')"
+                                onclick="openEditProgram({{ $program->id }}, '{{ addslashes($program->prefix ?? '') }}', '{{ addslashes($program->theme ?? '') }}', '{{ addslashes($program->name) }}', '{{ addslashes($program->description ?? '') }}', '{{ $program->start_date ? $program->start_date->format('Y-m-d') : '' }}', '{{ $program->end_date ? $program->end_date->format('Y-m-d') : '' }}')"
                                 data-bs-toggle="modal" data-bs-target="#modalEditProgram">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
@@ -361,14 +368,14 @@
                     <i class="fa-solid fa-grip-vertical text-white opacity-50"></i>
                 </div>
                 @endif
-                <div class="d-flex align-items-center gap-3 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSub{{ $sub->id }}" aria-expanded="true">
+                <div class="d-flex align-items-center gap-3 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseSub{{ $sub->id }}" aria-expanded="false">
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 36px; height: 36px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);">
                         <i class="fa-solid fa-chevron-down text-white icon-collapse transition-transform" id="iconSub{{ $sub->id }}"></i>
                     </div>
                     <div>
                         <p class="text-white opacity-60 mb-0" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;">Sub Program</p>
-                        <h5 class="fw-bold text-white mb-0 fs-6"><span class="sub-num">{{ $loop->iteration }}</span>. {{ $sub->name }}</h5>
+                        <h5 class="fw-bold text-white mb-0 fs-6"><span class="sub-num">{{ $program->prefix ? $program->prefix . '.' : '' }}{{ $loop->iteration }}</span>. {{ $sub->name }}</h5>
                         @if($sub->description)
                             <div class="text-white-50 mt-1" style="font-size: 0.68rem;">{{ Str::limit($sub->description, 80) }}</div>
                         @endif
@@ -418,15 +425,24 @@
                         <span class="badge rounded-pill ms-1" style="background: #fbbf24; color: #1e1b4b; font-size: 0.6rem;">{{ $sub->attachments->count() }}</span>
                         @endif
                     </button>
-                    {{-- Add Milestone --}}
+                    {{-- Add Milestone & Key Result --}}
                     @if($userRole === 'administrator' || $userRole === 'manager')
-                    <button type="button"
-                            class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                            style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
-                            data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
-                            onclick="setMilestoneSubProgram({{ $sub->id }}, '{{ addslashes($sub->name) }}')">
-                        <i class="fa-solid fa-plus"></i> Milestone
-                    </button>
+                    <div class="d-flex gap-1">
+                        <button type="button"
+                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                                style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
+                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                onclick="openAddMilestone({{ $sub->id }}, 'key_result')">
+                            <i class="fa-solid fa-plus"></i> KR
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                                style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
+                                data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                onclick="openAddMilestone({{ $sub->id }}, 'milestone')">
+                            <i class="fa-solid fa-plus"></i> Milestone
+                        </button>
+                    </div>
                     @endif
                     {{-- Delete Sub Program --}}
                     @if($userRole === 'administrator')
@@ -441,7 +457,7 @@
                 </div>
             </div>
 
-            <div id="collapseSub{{ $sub->id }}" class="collapse show hierarchy-collapse sub-collapse">
+            <div id="collapseSub{{ $sub->id }}" class="collapse hierarchy-collapse sub-collapse">
                 <div style="height: 4px; background: #e2e8f0;">
                     <div style="width: {{ $subAvg }}%; height: 100%; background: linear-gradient(to right, #3b82f6, #6366f1);"></div>
                 </div>
@@ -459,14 +475,14 @@
                             <i class="fa-solid fa-grip-vertical text-muted opacity-50"></i>
                         </div>
                         @endif
-                        <div class="d-flex align-items-center gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="true">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="false">
                             <div class="rounded-2 d-flex align-items-center justify-content-center transition-transform icon-collapse"
-                                 style="width: 28px; height: 28px; background: #dbeafe; border: 1px solid #bfdbfe;" id="iconMs{{ $ms->id }}">
-                                <i class="fa-solid fa-chevron-down" style="color: #3b82f6; font-size: 0.7rem;"></i>
+                                 style="width: 28px; height: 28px; background: {{ $ms->type === 'key_result' ? '#fee2e2' : '#dbeafe' }}; border: 1px solid {{ $ms->type === 'key_result' ? '#fecaca' : '#bfdbfe' }};" id="iconMs{{ $ms->id }}">
+                                <i class="fa-solid {{ $ms->type === 'key_result' ? 'fa-bullseye' : 'fa-chevron-down' }}" style="color: {{ $ms->type === 'key_result' ? '#dc2626' : '#3b82f6' }}; font-size: 0.7rem;"></i>
                             </div>
                             <div>
-                                <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">Milestone</p>
-                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num">{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $ms->name }}
+                                <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $ms->type === 'key_result' ? 'Key Result' : 'Milestone' }}</p>
+                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $ms->type === 'key_result' ? 'KR' : 'M' }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $ms->name }}
                                     @if($ms->bobot !== null)
                                     <span class="ms-1 badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
                                         <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.5rem;"></i>{{ $ms->bobot }}%
@@ -538,7 +554,7 @@
                         </div>
                     </div>
 
-                    <div id="collapseMs{{ $ms->id }}" class="collapse show hierarchy-collapse ms-collapse">
+                    <div id="collapseMs{{ $ms->id }}" class="collapse hierarchy-collapse ms-collapse">
                     {{-- Activities Table --}}
                     @if($ms->activities->count() > 0)
                     <div class="table-responsive">
@@ -579,7 +595,7 @@
                                             <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 act-drag-handle" style="cursor: grab;"></i>
                                             @endif
                                             <div>
-                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $loop->parent->parent->iteration }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $act->name }}</div>
+                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $loop->parent->parent->iteration }}.{{ $loop->parent->iteration }}</span>. {{ $act->name }}</div>
                                                 @if($act->description)
                                                     <div class="text-muted" style="font-size: 0.68rem;">{{ Str::limit($act->description, 60) }}</div>
                                                 @endif
@@ -686,7 +702,7 @@
                         <p class="small text-muted mb-2">No milestones yet.</p>
                         <button type="button" class="btn btn-sm btn-outline-primary"
                                 data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
-                                onclick="setMilestoneSubProgram({{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                                onclick="openAddMilestone({{ $sub->id }}, 'milestone'); document.getElementById('milestoneModalSubLabel').textContent = 'Sub Program: ' + '{{ addslashes($sub->name) }}';">
                             <i class="fa-solid fa-plus me-1"></i> Add Milestone
                         </button>
                     </div>
@@ -1117,23 +1133,25 @@
         <div class="modal-content border-0 shadow-lg rounded-4">
             <form action="{{ route('milestones.store') }}" method="POST">
                 @csrf
-                <input type="hidden" name="sub_program_id" id="milestoneSubProgramId" value="">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #dbeafe;">
                             <i class="fa-solid fa-flag-checkered" style="color: #3b82f6;"></i>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold mb-0">Tambah Milestone</h5>
-                            <p class="text-muted mb-0 small" id="milestoneSubLabel">Sub Program: —</p>
+                            <h5 class="modal-title fw-bold mb-0" id="modalAddMilestoneLabel">Tambah Milestone</h5>
+                            <p class="text-muted mb-0 small" id="milestoneModalSubLabel">Sub Program: —</p>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body px-4 py-3">
+                    <p class="small text-muted mb-3" id="milestoneModalTypeDesc">Menghubungkan target ke Sub Program tertentu.</p>
+                    <input type="hidden" name="sub_program_id" id="milestoneSubProgramId" value="">
+                    <input type="hidden" name="type" id="addMilestoneType" value="milestone">
                     <div class="row g-2 mb-3">
                         <div class="col-9">
-                            <label class="form-label fw-semibold small">Nama Milestone <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold small" id="milestoneModalNameLabel">Nama Milestone <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Desain Database" required>
                         </div>
                         <div class="col-3">
@@ -1260,8 +1278,18 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body px-4 py-3">
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <label class="form-label fw-semibold small">Prefix <span class="text-muted fw-normal">(e.g. 1.1)</span></label>
+                            <input type="text" name="prefix" id="editProgramPrefix" class="form-control form-control-sm" placeholder="Opsional">
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label fw-semibold small">Tema <span class="text-muted fw-normal">(e.g. Transformation)</span></label>
+                            <input type="text" name="theme" id="editProgramTheme" class="form-control form-control-sm" placeholder="Opsional">
+                        </div>
+                    </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Nama Program <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold small">Inisiatif Program <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="editProgramName" class="form-control form-control-sm" required>
                     </div>
                     <div class="mb-3">
@@ -1478,9 +1506,25 @@
 @push('scripts')
 <script>
     // ---- ADD helpers ----
+    function openAddMilestone(subId, type = 'milestone') {
+        document.getElementById('milestoneSubProgramId').value = subId;
+        document.getElementById('addMilestoneType').value = type;
+        
+        if (type === 'key_result') {
+            document.getElementById('modalAddMilestoneLabel').textContent = 'Tambah Key Result';
+            document.getElementById('milestoneModalNameLabel').innerHTML = 'Nama Key Result <span class="text-danger">*</span>';
+            document.getElementById('milestoneModalTypeDesc').textContent = 'Hasil kunci terukur yang mendukung pencapaian sub program.';
+        } else {
+            document.getElementById('modalAddMilestoneLabel').textContent = 'Tambah Milestone';
+            document.getElementById('milestoneModalNameLabel').innerHTML = 'Nama Milestone <span class="text-danger">*</span>';
+            document.getElementById('milestoneModalTypeDesc').textContent = 'Menghubungkan target ke Sub Program tertentu.';
+        }
+    }
+
     function setMilestoneSubProgram(subId, subName) {
         document.getElementById('milestoneSubProgramId').value = subId;
-        document.getElementById('milestoneSubLabel').textContent = 'Sub Program: ' + subName;
+        const subLabel = document.getElementById('milestoneModalSubLabel') || document.getElementById('milestoneSubLabel');
+        if (subLabel) subLabel.textContent = 'Sub Program: ' + subName;
     }
     function setActivityMilestone(msId, msName) {
         document.getElementById('activityMilestoneId').value = msId;
@@ -1488,8 +1532,10 @@
     }
 
     // ---- EDIT Program ----
-    function openEditProgram(id, name, desc, start, end) {
+    function openEditProgram(id, prefix, theme, name, desc, start, end) {
         document.getElementById('editProgramForm').action = '/programs/' + id;
+        document.getElementById('editProgramPrefix').value = prefix;
+        document.getElementById('editProgramTheme').value = theme;
         document.getElementById('editProgramName').value = name;
         document.getElementById('editProgramDesc').value = desc;
         document.getElementById('editProgramStart').value = start;
@@ -1700,26 +1746,47 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function recalculateHierarchyNumbering() {
+        const programPrefix = '{{ $program->prefix ? $program->prefix . "." : "" }}';
+        
         // Recalculate Sub Programs
         const subCards = document.querySelectorAll('.sub-card');
         subCards.forEach((subCard, subIdx) => {
-            const subNum = subIdx + 1;
+            const subNum = programPrefix + (subIdx + 1);
             const subNumEl = subCard.querySelector('.sub-num');
             if (subNumEl) subNumEl.textContent = subNum;
 
             // Recalculate Milestones within this sub program
             const msCards = subCard.querySelectorAll('.milestone-card');
-            msCards.forEach((msCard, msIdx) => {
-                const msNum = subNum + '.' + (msIdx + 1);
+            let mCounter = 0;
+            let krCounter = 0;
+            
+            msCards.forEach((msCard) => {
+                const subIteration = subIdx + 1;
                 const msNumEl = msCard.querySelector('.ms-num');
+                const type = msNumEl ? msNumEl.dataset.type : 'milestone';
+                
+                let msNum = '';
+                if (type === 'key_result') {
+                    krCounter++;
+                    msNum = 'KR.' + krCounter;
+                } else {
+                    mCounter++;
+                    msNum = 'M.' + subIteration + '.' + mCounter;
+                }
+                
                 if (msNumEl) msNumEl.textContent = msNum;
 
                 // Recalculate Activities within this milestone
                 const actItems = msCard.querySelectorAll('.activity-item');
                 actItems.forEach((actItem, actIdx) => {
-                    const actNum = msNum + '.' + (actIdx + 1);
                     const actNumEl = actItem.querySelector('.act-num');
-                    if (actNumEl) actNumEl.textContent = actNum;
+                    if (actNumEl) {
+                        if (type === 'key_result') {
+                            actNumEl.textContent = krCounter;
+                        } else {
+                            actNumEl.textContent = subIteration + '.' + mCounter;
+                        }
+                    }
                 });
             });
         });
@@ -1960,7 +2027,7 @@ function collapseAll() {
         let bsCollapse = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, {toggle: false});
         bsCollapse.hide();
     });
-}
+}  
 
 document.getElementById('hierarchySearch')?.addEventListener('input', function(e) {
     let term = e.target.value.toLowerCase();

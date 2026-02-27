@@ -15,8 +15,18 @@
         <div class="card-body p-4 p-md-5">
             <form action="{{ route('programs.store') }}" method="POST" class="d-flex flex-column gap-4">
                 @csrf
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-dark">Prefix <span class="text-muted fw-normal">(opsional)</span></label>
+                        <input type="text" name="prefix" class="form-control" placeholder="e.g. 1.1">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold text-dark">Tema <span class="text-muted fw-normal">(opsional)</span></label>
+                        <input type="text" name="theme" class="form-control" placeholder="e.g. Digital Transformation">
+                    </div>
+                </div>
                 <div>
-                    <label class="form-label fw-semibold text-dark">Nama Program Utama <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold text-dark">Inisiatif Program <span class="text-danger">*</span></label>
                     <input type="text" name="name" class="form-control" required placeholder="e.g. Sistem Informasi Terpadu">
                 </div>
                 <div>

@@ -11,6 +11,8 @@ class Program extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'prefix',
+        'theme',
         'name',
         'description',
         'start_date',

@@ -14,6 +14,7 @@ class Milestone extends Model
 
     protected $fillable = [
         'sub_program_id',
+        'type',
         'name',
         'description',
         'bobot',

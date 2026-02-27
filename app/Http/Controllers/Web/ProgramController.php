@@ -23,7 +23,7 @@ class ProgramController extends Controller
     public function store(StoreProgramRequest $request)
     {
         Program::create($request->validated());
-        return redirect()->route('projects.gantt')->with('success', 'Program created successfully.');
+        return redirect()->route('programs.index')->with('success', 'Program created successfully.');
     }
 
     public function show(string $id)
@@ -167,7 +167,7 @@ class ProgramController extends Controller
     {
         $program = Program::findOrFail($id);
         $program->update($request->validated());
-        return redirect()->route('projects.gantt')->with('success', 'Program updated successfully.');
+        return redirect()->back()->with('success', 'Program updated successfully.');
     }
 
     public function destroy(string $id)
