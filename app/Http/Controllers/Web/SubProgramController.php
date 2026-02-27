@@ -25,7 +25,20 @@ class SubProgramController extends Controller
 
     public function store(StoreSubProgramRequest $request)
     {
-        SubProgram::create($request->validated());
+        $data = $request->validated();
+        $minOrder = SubProgram::where('program_id', $data['program_id'])->min('sort_order') ?? 0;
+        $data['sort_order'] = $minOrder - 1;
+        
+        $subProgram = SubProgram::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sub Program berhasil ditambahkan.',
+                'data' => $subProgram
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Sub Program berhasil ditambahkan.');
     }
 
@@ -46,6 +59,15 @@ class SubProgramController extends Controller
     {
         $subProgram = SubProgram::findOrFail($id);
         $subProgram->update($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sub Program berhasil diperbarui.',
+                'data' => $subProgram
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Sub Program berhasil diperbarui.');
     }
 
@@ -53,6 +75,14 @@ class SubProgramController extends Controller
     {
         $subProgram = SubProgram::findOrFail($id);
         $subProgram->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sub Program berhasil dihapus.'
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Sub Program berhasil dihapus.');
     }
 }

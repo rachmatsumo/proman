@@ -167,6 +167,15 @@ class ProgramController extends Controller
     {
         $program = Program::findOrFail($id);
         $program->update($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Program updated successfully.',
+                'data' => $program
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Program updated successfully.');
     }
 
@@ -174,6 +183,14 @@ class ProgramController extends Controller
     {
         $program = Program::findOrFail($id);
         $program->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Program deleted successfully.'
+            ]);
+        }
+
         return redirect()->route('projects.gantt')->with('success', 'Program deleted successfully.');
     }
 }

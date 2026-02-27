@@ -121,9 +121,9 @@
                 <i class="fa-solid fa-diagram-project"></i>
             </div>
             <div class="position-relative">
-                <div class="d-flex flex-column align-items-md-start justify-content-between gap-4">
+                <div class="d-flex flex-column align-items-md-start justify-content-between gap-2" id="program-header-content">
                     <div>
-                        <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="d-flex align-items-center gap-3 mb-2">
                             <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(255,255,255,0.15);">
                                 <i class="fa-solid fa-folder-open fs-4"></i>
                             </div>
@@ -149,7 +149,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
+                    <div class="d-flex gap-2 flex-shrink-0 flex-wrap w-100 justify-content-end">
                         {{-- Edit Program --}}
                         @if($userRole === 'administrator' || $userRole === 'manager')
                         <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
@@ -169,13 +169,11 @@
                         @endif
                         {{-- Delete Program --}}
                         @if($userRole === 'administrator')
-                        <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="return confirm('Hapus program ini secara permanen?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
-                                    style="background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5;">
-                                <i class="fa-solid fa-trash-can"></i> Delete
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
+                                style="background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5;"
+                                onclick="if(confirm('Hapus program ini secara permanen?')) deleteHierarchyItem('{{ route('programs.destroy', $program->id) }}', '', () => { window.location.href = '{{ route('projects.gantt') }}'; })">
+                            <i class="fa-solid fa-trash-can"></i> Delete
+                        </button>
                         @endif
                     </div>
                 </div>
@@ -413,6 +411,12 @@
                             onclick="openEditSubProgram({{ $sub->id }}, {{ $program->id }}, '{{ addslashes($sub->name) }}', '{{ $sub->bobot ?? '' }}', '{{ addslashes($sub->description ?? '') }}', '{{ $sub->start_date ? $sub->start_date->format('Y-m-d') : '' }}', '{{ $sub->end_date ? $sub->end_date->format('Y-m-d') : '' }}')">
                         <i class="fa-solid fa-pen-to-square"></i> Edit
                     </button>
+                    <button type="button"
+                            class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
+                            onclick="openDuplicateModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                        <i class="fa-solid fa-copy"></i> Duplikat
+                    </button>
                     @endif
                     {{-- Attachments Sub Program --}}
                     <button type="button"
@@ -446,13 +450,11 @@
                     @endif
                     {{-- Delete Sub Program --}}
                     @if($userRole === 'administrator')
-                    <form action="{{ route('sub_programs.destroy', $sub->id) }}" method="POST" onsubmit="return confirm('Hapus sub program ini?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-sm d-flex align-items-center gap-1 px-2"
-                                style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.72rem;">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-sm d-flex align-items-center gap-1 px-2"
+                            style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.72rem;"
+                            onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                     @endif
                 </div>
             </div>
@@ -462,8 +464,13 @@
                     <div style="width: {{ $subAvg }}%; height: 100%; background: linear-gradient(to right, #3b82f6, #6366f1);"></div>
                 </div>
                 <div class="card-body p-3 d-flex flex-column gap-3 bg-light sub-body milestones-container" data-sub-id="{{ $sub->id }}" id="milestones-{{ $sub->id }}">
+                @php $mCount = 0; $krCount = 0; @endphp
                 @forelse($sub->milestones as $ms)
                 @php
+                    if($ms->type === 'key_result') $krCount++; else $mCount++;
+                    $msNum = ($ms->type === 'key_result' ? 'KR.1.' . $krCount : 'M.1.' . $mCount);
+                    $actPrefix = ($ms->type === 'key_result' ? $krCount : $mCount);
+
                     $msActs  = $ms->activities;
                     $msTotal = $msActs->count();
                     $msAvg   = round($calcMsProgress($ms));
@@ -482,7 +489,7 @@
                             </div>
                             <div>
                                 <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $ms->type === 'key_result' ? 'Key Result' : 'Milestone' }}</p>
-                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $ms->type === 'key_result' ? 'KR' : 'M' }}.{{ $loop->parent->iteration }}.{{ $loop->iteration }}</span>. {{ $ms->name }}
+                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $msNum }}</span>. {{ $ms->name }}
                                     @if($ms->bobot !== null)
                                     <span class="ms-1 badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
                                         <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.5rem;"></i>{{ $ms->bobot }}%
@@ -520,6 +527,13 @@
                                     onclick="openEditMilestone({{ $ms->id }}, {{ $ms->sub_program_id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}')">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
+                            <button type="button"
+                                    class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                                    style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;"
+                                    title="Duplikat Milestone"
+                                    onclick="openDuplicateModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
                             @endif
                             {{-- Attachments Milestone --}}
                             <button type="button"
@@ -544,12 +558,10 @@
                             @endif
                             {{-- Delete Milestone --}}
                             @if($userRole === 'administrator')
-                            <form action="{{ route('milestones.destroy', $ms->id) }}" method="POST" onsubmit="return confirm('Hapus milestone ini?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;">
-                                    <i class="fa-solid fa-times"></i>
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Milestone"
+                                    onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
                             @endif
                         </div>
                     </div>
@@ -595,7 +607,7 @@
                                             <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 act-drag-handle" style="cursor: grab;"></i>
                                             @endif
                                             <div>
-                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $loop->parent->parent->iteration }}.{{ $loop->parent->iteration }}</span>. {{ $act->name }}</div>
+                                                <div class="fw-semibold text-dark"><span class="act-num">{{ $actPrefix }}.{{ $loop->iteration }}</span>. {{ $act->name }}</div>
                                                 @if($act->description)
                                                     <div class="text-muted" style="font-size: 0.68rem;">{{ Str::limit($act->description, 60) }}</div>
                                                 @endif
@@ -651,36 +663,39 @@
                                     </td>
                                     <td class="px-2 py-2 text-center">
                                         <div class="d-flex gap-1 justify-content-center">
-                                            {{-- Edit Activity --}}
                                             @if($userRole === 'administrator' || $userRole === 'manager')
-                                            <button type="button" class="btn btn-sm p-1 px-2"
-                                                    style="color: #4338ca; background: #e0e7ff; border: 1px solid #c7d2fe; font-size: 0.7rem;"
-                                                    title="Edit"
+                                            <button type="button"
+                                                    class="btn btn-sm p-1"
+                                                    style="color: #6366f1; background: none; border: none; font-size: 0.75rem;"
+                                                    title="Duplikat Activity"
+                                                    onclick="openDuplicateModal('activity', {{ $act->id }}, '{{ addslashes($act->name) }}')">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm p-1"
+                                                    style="color: #4338ca; background: none; border: none; font-size: 0.75rem;"
+                                                    title="Edit Activity"
                                                     data-bs-toggle="modal" data-bs-target="#modalEditActivity"
-                                                    onclick="openEditActivity({{ $act->id }}, {{ $act->milestone_id }}, '{{ addslashes($act->name) }}', '{{ $act->bobot ?? '' }}', '{{ addslashes($act->description ?? '') }}', '{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}', '{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}', {{ $act->progress }}, '{{ $act->status }}', '{{ addslashes($act->uic ?? '') }}', '{{ addslashes($act->pic ?? '') }}')">
+                                                    onclick="openEditActivity({{ $act->id }}, {{ $ms->id }}, '{{ addslashes($act->name) }}', '{{ $act->bobot ?? '' }}', '{{ addslashes($act->description ?? '') }}', '{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}', '{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}', '{{ $act->progress }}', '{{ $act->status }}', '{{ addslashes($act->uic ?? '') }}', '{{ addslashes($act->pic ?? '') }}')">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
-                                            @endif
-                                            {{-- Delete Activity --}}
-                                            @if($userRole === 'administrator')
-                                            <form action="{{ route('activities.destroy', $act->id) }}" method="POST" onsubmit="return confirm('Hapus activity ini?')">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm p-1 px-2 text-danger" style="background: #fef2f2; border: 1px solid #fecaca; font-size: 0.7rem;" title="Delete">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endif
-                                            {{-- Attachments Activity --}}
                                             <button type="button"
-                                                    class="position-relative btn btn-sm px-2 py-1 d-inline-flex flex-row align-items-center justify-content-center text-nowrap"
-                                                    style="color: #92400e; background: #fef3c7; border: 1px solid #fde68a; font-size: 0.7rem; height: 26px;"
-                                                    title="Lampiran"
+                                                    class="btn btn-sm p-1"
+                                                    style="color: #92400e; background: none; border: none; font-size: 0.75rem;"
+                                                    title="Lampiran Activity"
                                                     onclick="openAttachmentModal('activity', {{ $act->id }}, '{{ addslashes($act->name) }}')">
                                                 <i class="fa-solid fa-paperclip"></i>
                                                 @if($act->attachments->count() > 0)
-                                                    <span class="badge rounded-pill ms-1 position-absolute" style="background: #f59e0b; color: white; font-size: 0.55rem; padding: 0.15em 0.4em; top:-5px; right:-5px">{{ $act->attachments->count() }}</span>
+                                                <span class="badge rounded-pill" style="background: #f59e0b; color: white; font-size: 0.5rem; position: relative; top: -5px;">{{ $act->attachments->count() }}</span>
                                                 @endif
                                             </button>
+                                            @endif
+                                            @if($userRole === 'administrator')
+                                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Activity"
+                                                    onclick="deleteHierarchyItem('{{ route('activities.destroy', $act->id) }}', 'Hapus activity ini?', () => { document.querySelector('.activity-item[data-id=\'{{ $act->id }}\']').remove(); })">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -1075,7 +1090,7 @@
 <div class="modal fade" id="modalAddSubProgram" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form action="{{ route('sub_programs.store') }}" method="POST">
+            <form id="formAddSubProgram" action="{{ route('sub_programs.store') }}" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('formAddSubProgram', 'modalAddSubProgram', (data) => { refreshPageContent(); })">
                 @csrf
                 <input type="hidden" name="program_id" value="{{ $program->id }}">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -1131,7 +1146,7 @@
 <div class="modal fade" id="modalAddMilestone" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form action="{{ route('milestones.store') }}" method="POST">
+            <form id="formAddMilestone" action="{{ route('milestones.store') }}" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('formAddMilestone', 'modalAddMilestone', (data) => { refreshPageContent(); })">
                 @csrf
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
                     <div class="d-flex align-items-center gap-3">
@@ -1187,7 +1202,7 @@
 <div class="modal fade" id="modalAddActivity" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form action="{{ route('activities.store') }}" method="POST">
+            <form id="formAddActivity" action="{{ route('activities.store') }}" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('formAddActivity', 'modalAddActivity', (data) => { refreshPageContent(); })">
                 @csrf
                 <input type="hidden" name="milestone_id" id="activityMilestoneId" value="">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -1266,7 +1281,7 @@
 <div class="modal fade" id="modalEditProgram" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form id="editProgramForm" action="" method="POST">
+            <form id="editProgramForm" action="" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('editProgramForm', 'modalEditProgram', (data) => { refreshPageContent(); })">
                 @csrf @method('PUT')
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
                     <div class="d-flex align-items-center gap-3">
@@ -1320,7 +1335,7 @@
 <div class="modal fade" id="modalEditSubProgram" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form id="editSubProgramForm" action="" method="POST">
+            <form id="editSubProgramForm" action="" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('editSubProgramForm', 'modalEditSubProgram', (data) => { refreshPageContent(); })">
                 @csrf @method('PUT')
                 <input type="hidden" name="program_id" id="editSubProgramProgramId">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -1374,7 +1389,7 @@
 <div class="modal fade" id="modalEditMilestone" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form id="editMilestoneForm" action="" method="POST">
+            <form id="editMilestoneForm" action="" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('editMilestoneForm', 'modalEditMilestone', (data) => { refreshPageContent(); })">
                 @csrf @method('PUT')
                 <input type="hidden" name="sub_program_id" id="editMilestoneSubProgramId">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -1424,11 +1439,63 @@
     </div>
 </div>
 
+{{-- Modal Duplicate --}}
+<div class="modal fade" id="modalDuplicate" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-copy me-2"></i>Duplikasi <span id="duplicateEntityTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formDuplicate" onsubmit="submitDuplicateForm(event)">
+                @csrf
+                <input type="hidden" name="type" id="duplicateType">
+                <input type="hidden" name="id" id="duplicateId">
+                <div class="modal-body p-4">
+                    <p class="mb-3">Anda akan menduplikasi <strong><span id="duplicateEntityName"></span></strong>.</p>
+                    
+                    <div id="duplicateOptionsSub" class="d-none">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="with_milestones" id="dupWithMilestones" value="1" checked>
+                            <label class="form-check-label" for="dupWithMilestones">
+                                Sertakan Milestone
+                            </label>
+                        </div>
+                        <div class="form-check mb-2" id="dupWithActivitiesContainer">
+                            <input class="form-check-input" type="checkbox" name="with_activities" id="dupWithActivitiesSub" value="1" checked>
+                            <label class="form-check-label" for="dupWithActivitiesSub">
+                                Sertakan Activity
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="duplicateOptionsMs" class="d-none">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="with_activities" id="dupWithActivitiesMs" value="1" checked>
+                            <label class="form-check-label" for="dupWithActivitiesMs">
+                                Sertakan Activity
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="duplicateOptionsAct" class="d-none">
+                        <p class="text-muted small">Activity akan diduplikasi langsung ke milestone yang sama.</p>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light p-3">
+                    <button type="button" class="btn btn-light fw-semibold" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">Duplikasi Sekarang</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- EDIT Activity --}}
 <div class="modal fade" id="modalEditActivity" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form id="editActivityForm" action="" method="POST">
+            <form id="editActivityForm" action="" method="POST" onsubmit="event.preventDefault(); submitAjaxForm('editActivityForm', 'modalEditActivity', (data) => { refreshPageContent(); })">
                 @csrf @method('PUT')
                 <input type="hidden" name="milestone_id" id="editActivityMilestoneIdHidden">
                 <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -1501,6 +1568,14 @@
 
 <style>
     .border-dashed { border-style: dashed !important; }
+    /* Fix SweetAlert2 breaking fixed layout */
+    body.swal2-shown {
+        overflow: hidden !important;
+        padding-right: 0 !important;
+    }
+    .swal2-container {
+        z-index: 2000 !important;
+    }
 </style>
 
 @push('scripts')
@@ -1582,6 +1657,133 @@
         document.getElementById('editActivityPic').value = pic;
     }
 
+    // ---- AJAX CRUD Helpers ----
+    async function submitAjaxForm(formId, modalId, onSuccess) {
+        const form = document.getElementById(formId);
+        const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnHtml = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Simpan...';
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (modal) modal.hide();
+                form.reset();
+                if (onSuccess) onSuccess(result.data);
+                // Optional: show toast/notification
+                console.log(result.message);
+                if (typeof recalculateHierarchyNumbering === 'function') recalculateHierarchyNumbering();
+            } else {
+                alert(result.message || 'Terjadi kesalahan saat menyimpan data.');
+            }
+        } catch (error) {
+            console.error('AJAX Error:', error);
+            alert('Gagal menghubungi server.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+        }
+    }
+
+    async function deleteHierarchyItem(url, confirmMsg, onSuccess) {
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-HTTP-Method-Override': 'DELETE'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (onSuccess) onSuccess();
+                if (typeof recalculateHierarchyNumbering === 'function') recalculateHierarchyNumbering();
+            } else {
+                alert(result.message || 'Gagal menghapus data.');
+            }
+        } catch (error) {
+            console.error('AJAX Delete Error:', error);
+            alert('Gagal menghubungi server.');
+        }
+    }
+
+    async function refreshPageContent() {
+        // Collect currently expanded accordion IDs
+        const expandedIds = Array.from(document.querySelectorAll('.hierarchy-collapse.show'))
+            .map(el => el.id);
+
+        try {
+            const response = await fetch(window.location.href);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Refresh Header Area
+            const newHeader = doc.getElementById('program-header-content');
+            const oldHeader = document.getElementById('program-header-content');
+            if (newHeader && oldHeader) {
+                oldHeader.innerHTML = newHeader.innerHTML;
+            }
+
+            // Refresh Hierarchy Container
+            const newContainer = doc.getElementById('sub-programs-container');
+            const oldContainer = document.getElementById('sub-programs-container');
+            
+            if (newContainer && oldContainer) {
+                oldContainer.innerHTML = newContainer.innerHTML;
+                
+                // Update attachments data
+                const newAttachScript = doc.getElementById('attachments-data-script');
+                if (newAttachScript) {
+                    try {
+                        _allAttachments = JSON.parse(newAttachScript.textContent);
+                    } catch (e) {
+                        console.error('JSON Parse Error for Attachments:', e);
+                    }
+                }
+                
+                // Restore expanded state
+                expandedIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.add('show');
+                        const trigger = document.querySelector(`[data-bs-target="#${id}"]`);
+                        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                if (typeof initSortable === 'function') initSortable();
+                if (typeof recalculateHierarchyNumbering === 'function') recalculateHierarchyNumbering();
+                
+                const searchInput = document.getElementById('hierarchySearch');
+                if (searchInput) {
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            }
+        } catch (error) {
+            console.error('Refresh Content Error:', error);
+        }
+    }
+
     // ---- Init popovers (status chips) using DOM content divs ----
     document.addEventListener('DOMContentLoaded', function () {
         ['upcoming','active','delayed','completed'].forEach(function(status) {
@@ -1635,7 +1837,7 @@
 <div class="modal fade" id="modalUploadAttachment" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form id="uploadAttachmentForm" action="{{ route('attachments.store') }}" method="POST" enctype="multipart/form-data">
+            <form id="uploadAttachmentForm" action="{{ route('attachments.store') }}" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); submitAjaxForm('uploadAttachmentForm', 'modalUploadAttachment', async (data) => { await refreshPageContent(); openAttachmentModal(_attachCurrentType, _attachCurrentId, _attachCurrentName); })">
                 @csrf
                 <input type="hidden" name="attachable_type" id="uploadAttachableType">
                 <input type="hidden" name="attachable_id"   id="uploadAttachableId">
@@ -1697,53 +1899,142 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // 1. Sortable Sub Programs
-    const subContainer = document.getElementById('sub-programs-container');
-    if (subContainer) {
-        new Sortable(subContainer, {
-            animation: 150,
-            handle: '.sub-drag-handle',
-            ghostClass: 'bg-primary',
-            ghostClass: 'opacity-25',
-            onEnd: function (evt) {
-                const order = Array.from(subContainer.querySelectorAll('.sub-card')).map(el => el.dataset.id);
-                updateHierarchyOrder('sub_program', order);
-                recalculateHierarchyNumbering();
-            }
+    function initSortable() {
+        // 1. Sortable Sub Programs
+        const subContainer = document.getElementById('sub-programs-container');
+        if (subContainer) {
+            new Sortable(subContainer, {
+                animation: 150,
+                handle: '.sub-drag-handle',
+                ghostClass: 'bg-primary-subtle',
+                onEnd: function (evt) {
+                    const order = Array.from(subContainer.querySelectorAll('.sub-card')).map(el => el.dataset.id);
+                    updateHierarchyOrder('sub_program', order);
+                    recalculateHierarchyNumbering();
+                }
+            });
+        }
+
+        // 2. Sortable Milestones
+        document.querySelectorAll('.milestones-container').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                group: 'milestones',
+                handle: '.ms-drag-handle',
+                ghostClass: 'bg-primary-subtle',
+                onEnd: function (evt) {
+                    const toContainer = evt.to;
+                    const order = Array.from(toContainer.querySelectorAll('.milestone-card')).map(el => el.dataset.id);
+                    const newParentId = toContainer.dataset.subId;
+                    updateHierarchyOrder('milestone', order, newParentId);
+                    recalculateHierarchyNumbering();
+                }
+            });
+        });
+
+        // 3. Sortable Activities
+        document.querySelectorAll('.activities-container').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                group: 'activities',
+                handle: '.act-drag-handle',
+                ghostClass: 'bg-primary-subtle',
+                onEnd: function (evt) {
+                    const toContainer = evt.to;
+                    const order = Array.from(toContainer.querySelectorAll('.activity-item')).map(el => el.dataset.id);
+                    const newParentId = toContainer.dataset.msId;
+                    updateHierarchyOrder('activity', order, newParentId);
+                    recalculateHierarchyNumbering();
+                }
+            });
         });
     }
 
-    // 2. Sortable Milestones
-    document.querySelectorAll('.milestones-container').forEach(container => {
-        new Sortable(container, {
-            animation: 150,
-            handle: '.ms-drag-handle',
-            ghostClass: 'bg-primary',
-            ghostClass: 'opacity-25',
-            onEnd: function (evt) {
-                const order = Array.from(container.querySelectorAll('.milestone-card')).map(el => el.dataset.id);
-                updateHierarchyOrder('milestone', order);
-                recalculateHierarchyNumbering();
-            }
-        });
-    });
+    document.addEventListener('DOMContentLoaded', initSortable);
 
-    // 3. Sortable Activities
-    document.querySelectorAll('.activities-container').forEach(container => {
-        new Sortable(container, {
-            animation: 150,
-            handle: '.act-drag-handle',
-            ghostClass: 'bg-primary',
-            ghostClass: 'opacity-10',
-            onEnd: function (evt) {
-                const order = Array.from(container.querySelectorAll('.activity-item')).map(el => el.dataset.id);
-                updateHierarchyOrder('activity', order);
-                recalculateHierarchyNumbering();
+    function openDuplicateModal(type, id, name) {
+        document.getElementById('duplicateType').value = type;
+        document.getElementById('duplicateId').value = id;
+        document.getElementById('duplicateEntityName').textContent = name;
+        
+        // Setup title
+        let title = '';
+        if (type === 'sub_program') title = 'Sub Program';
+        if (type === 'milestone')   title = 'Milestone';
+        if (type === 'activity')    title = 'Activity';
+        document.getElementById('duplicateEntityTitle').textContent = title;
+
+        // Toggle options and disable hidden inputs
+        const optionsSub = document.getElementById('duplicateOptionsSub');
+        const optionsMs  = document.getElementById('duplicateOptionsMs');
+        const optionsAct = document.getElementById('duplicateOptionsAct');
+
+        optionsSub.classList.add('d-none');
+        optionsMs.classList.add('d-none');
+        optionsAct.classList.add('d-none');
+
+        // Disable all inputs initially
+        optionsSub.querySelectorAll('input').forEach(i => i.disabled = true);
+        optionsMs.querySelectorAll('input').forEach(i => i.disabled = true);
+
+        if (type === 'sub_program') {
+            optionsSub.classList.remove('d-none');
+            optionsSub.querySelectorAll('input').forEach(i => i.disabled = false);
+            
+            // Logic for auto-toggling activity based on milestone
+            const msCheck = document.getElementById('dupWithMilestones');
+            const actContainer = document.getElementById('dupWithActivitiesContainer');
+            msCheck.onchange = () => {
+                actContainer.style.opacity = msCheck.checked ? '1' : '0.5';
+                document.getElementById('dupWithActivitiesSub').disabled = !msCheck.checked;
+            };
+            msCheck.onchange();
+        } else if (type === 'milestone') {
+            optionsMs.classList.remove('d-none');
+            optionsMs.querySelectorAll('input').forEach(i => i.disabled = false);
+        } else {
+            optionsAct.classList.remove('d-none');
+        }
+
+        new bootstrap.Modal(document.getElementById('modalDuplicate')).show();
+    }
+
+    async function submitDuplicateForm(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Duplicating...';
+
+        try {
+            const response = await fetch('{{ route("hierarchy.duplicate") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalDuplicate')).hide();
+                await refreshPageContent();
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message, timer: 1500, showConfirmButton: false, heightAuto: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Oops...', text: data.message || 'Gagal menduplikasi item.', heightAuto: false });
             }
-        });
-    });
+        } catch (error) {
+            console.error('Duplicate Error:', error);
+            Swal.fire({ icon: 'error', title: 'Galat', text: 'Terjadi kesalahan sistem.', heightAuto: false });
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Duplikasi Sekarang';
+        }
+    }
 
     function recalculateHierarchyNumbering() {
         const programPrefix = '{{ $program->prefix ? $program->prefix . "." : "" }}';
@@ -1761,17 +2052,19 @@ document.addEventListener('DOMContentLoaded', function () {
             let krCounter = 0;
             
             msCards.forEach((msCard) => {
-                const subIteration = subIdx + 1;
                 const msNumEl = msCard.querySelector('.ms-num');
                 const type = msNumEl ? msNumEl.dataset.type : 'milestone';
                 
                 let msNum = '';
-                if (type === 'key_result') {
+                let actPrefix = '';
+                if (type === 'key_result' || type === 'key_result') { // Keep it simple based on data-type
                     krCounter++;
-                    msNum = 'KR.' + krCounter;
+                    msNum = 'KR.1.' + krCounter;
+                    actPrefix = krCounter;
                 } else {
                     mCounter++;
-                    msNum = 'M.' + subIteration + '.' + mCounter;
+                    msNum = 'M.1.' + mCounter;
+                    actPrefix = mCounter;
                 }
                 
                 if (msNumEl) msNumEl.textContent = msNum;
@@ -1781,25 +2074,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 actItems.forEach((actItem, actIdx) => {
                     const actNumEl = actItem.querySelector('.act-num');
                     if (actNumEl) {
-                        if (type === 'key_result') {
-                            actNumEl.textContent = krCounter;
-                        } else {
-                            actNumEl.textContent = subIteration + '.' + mCounter;
-                        }
+                        actNumEl.textContent = actPrefix + '.' + (actIdx + 1);
                     }
                 });
             });
         });
     }
 
-    function updateHierarchyOrder(type, order) {
+    function updateHierarchyOrder(type, order, parentId = null) {
         fetch('{{ route("hierarchy.update-order") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ type: type, order: order })
+            body: JSON.stringify({ type: type, order: order, parent_id: parentId })
         })
         .then(response => response.json())
         .then(data => {
@@ -1809,7 +2098,6 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => console.error('Error updating order:', error));
     }
-});
 
 // ===== AJAX TAB LOADER =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -1888,7 +2176,11 @@ let _attachCurrentId   = 0;
 let _attachCurrentName = '';
 
 // All attachments data passed from Blade (JSON)
-const _allAttachments = @json($attachmentsData);
+let _allAttachments = [];
+</script>
+<script id="attachments-data-script" type="application/json">@json($attachmentsData)</script>
+<script>
+_allAttachments = JSON.parse(document.getElementById('attachments-data-script').textContent);
 
 function openAttachmentModal(type, id, name) {
     _attachCurrentType = type;
@@ -1967,13 +2259,10 @@ function openAttachmentModal(type, id, name) {
                         <a href="/attachments/${a.id}/download" class="btn btn-sm px-2" style="background:#ede9fe; color:#6d28d9; border:1px solid #ddd6fe; font-size:0.7rem;" title="Download">
                             <i class="fa-solid fa-download"></i>
                         </a>
-                        <form action="/attachments/${a.id}" method="POST" onsubmit="return confirm('Hapus lampiran ini?')">
-                            <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="_method" value="DELETE">
-                            <button type="submit" class="btn btn-sm px-2" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-size:0.7rem;" title="Hapus">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-sm px-2" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-size:0.7rem;" title="Hapus"
+                                onclick="deleteHierarchyItem('/attachments/${a.id}', 'Hapus lampiran ini?', async () => { await refreshPageContent(); openAttachmentModal(_attachCurrentType, _attachCurrentId, _attachCurrentName); })">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>`;
             });

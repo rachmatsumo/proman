@@ -15,18 +15,24 @@ class HierarchyOrderController extends Controller
             'type' => 'required|in:sub_program,milestone,activity',
             'order' => 'required|array',
             'order.*' => 'integer',
+            'parent_id' => 'nullable|integer',
         ]);
 
         $type = $request->type;
         $order = $request->order;
+        $parentId = $request->parent_id;
 
         foreach ($order as $index => $id) {
             if ($type === 'sub_program') {
                 SubProgram::where('id', $id)->update(['sort_order' => $index]);
             } elseif ($type === 'milestone') {
-                Milestone::where('id', $id)->update(['sort_order' => $index]);
+                $updateData = ['sort_order' => $index];
+                if ($parentId) $updateData['sub_program_id'] = $parentId;
+                Milestone::where('id', $id)->update($updateData);
             } elseif ($type === 'activity') {
-                Activity::where('id', $id)->update(['sort_order' => $index]);
+                $updateData = ['sort_order' => $index];
+                if ($parentId) $updateData['milestone_id'] = $parentId;
+                Activity::where('id', $id)->update($updateData);
             }
         }
 

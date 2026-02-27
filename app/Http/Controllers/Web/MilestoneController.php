@@ -25,7 +25,20 @@ class MilestoneController extends Controller
 
     public function store(StoreMilestoneRequest $request)
     {
-        Milestone::create($request->validated());
+        $data = $request->validated();
+        $minOrder = Milestone::where('sub_program_id', $data['sub_program_id'])->min('sort_order') ?? 0;
+        $data['sort_order'] = $minOrder - 1;
+        
+        $milestone = Milestone::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Milestone berhasil ditambahkan.',
+                'data' => $milestone
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Milestone berhasil ditambahkan.');
     }
 
@@ -46,6 +59,15 @@ class MilestoneController extends Controller
     {
         $milestone = Milestone::findOrFail($id);
         $milestone->update($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Milestone berhasil diperbarui.',
+                'data' => $milestone
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Milestone berhasil diperbarui.');
     }
 
@@ -53,6 +75,14 @@ class MilestoneController extends Controller
     {
         $milestone = Milestone::findOrFail($id);
         $milestone->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Milestone berhasil dihapus.'
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Milestone berhasil dihapus.');
     }
 }

@@ -47,8 +47,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
     Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
-    // Hierarchy Order
+    // Hierarchy Management
     Route::post('/hierarchy/update-order', [App\Http\Controllers\HierarchyOrderController::class, 'updateOrder'])->name('hierarchy.update-order');
+    Route::post('/hierarchy/duplicate', [App\Http\Controllers\HierarchyDuplicateController::class, 'duplicate'])->name('hierarchy.duplicate');
 
     // User Management
     Route::resource('users', App\Http\Controllers\UserController::class);

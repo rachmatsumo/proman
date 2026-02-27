@@ -25,7 +25,20 @@ class ActivityController extends Controller
 
     public function store(StoreActivityRequest $request)
     {
-        Activity::create($request->validated());
+        $data = $request->validated();
+        $minOrder = Activity::where('milestone_id', $data['milestone_id'])->min('sort_order') ?? 0;
+        $data['sort_order'] = $minOrder - 1;
+        
+        $activity = Activity::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity berhasil ditambahkan.',
+                'data' => $activity
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Activity berhasil ditambahkan.');
     }
 
@@ -46,6 +59,15 @@ class ActivityController extends Controller
     {
         $activity = Activity::findOrFail($id);
         $activity->update($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity berhasil diperbarui.',
+                'data' => $activity
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Activity berhasil diperbarui.');
     }
 
@@ -53,6 +75,14 @@ class ActivityController extends Controller
     {
         $activity = Activity::findOrFail($id);
         $activity->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity berhasil dihapus.'
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Activity berhasil dihapus.');
     }
 }

@@ -67,6 +67,14 @@ class AttachmentController extends Controller
             'description'       => $request->description,
         ]);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'File "' . $attachment->name . '" berhasil diunggah.',
+                'data' => $attachment
+            ]);
+        }
+
         return redirect()->back()->with('success', 'File "' . $attachment->name . '" berhasil diunggah.');
     }
 
@@ -92,6 +100,13 @@ class AttachmentController extends Controller
     {
         Storage::disk('local')->delete($attachment->file_path);
         $attachment->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lampiran berhasil dihapus.'
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Lampiran berhasil dihapus.');
     }
