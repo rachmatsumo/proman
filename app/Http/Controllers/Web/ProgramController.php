@@ -381,6 +381,6 @@ class ProgramController extends Controller
             ]);
         }
 
-        return redirect()->route('projects.gantt')->with('success', 'Program deleted successfully.');
+        return redirect()->route('programs.index')->with('success', 'Program deleted successfully.');
     }
 }
