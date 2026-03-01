@@ -123,11 +123,12 @@ class SubProgramSheet implements FromArray, WithTitle, WithStyles, WithColumnWid
         $rows[] = ['type' => 'months', 'data' => $monthRow];
         $rows[] = ['type' => 'th',     'data' => $weekRow];
 
+        // PASS 1: Dividers and Regular Milestones
         $mGroup  = 1;
         $mCount  = 0;
-        $krCount = 0;
-
         foreach ($this->sub->milestones as $ms) {
+            if ($ms->type === 'key_result') continue;
+
             if ($ms->type === 'divider') {
                 $rows[] = ['type' => 'divider', 'data' => ['', '— ' . $ms->name, '', '', '', '', '', '', '']];
                 $mGroup++;
@@ -138,25 +139,6 @@ class SubProgramSheet implements FromArray, WithTitle, WithStyles, WithColumnWid
             // Milestone progress calculation for display
             $acts = $ms->activities;
             $msAvg = $acts->isEmpty() ? 0 : round($acts->avg('progress'));
-
-            if ($ms->type === 'key_result') {
-                $krCount++;
-                $rows[] = [
-                    'type' => 'kr',
-                    'data' => [
-                        'KR.' . $krCount,
-                        $ms->name,
-                        '',
-                        '',
-                        $ms->bobot ? $ms->bobot . '%' : '',
-                        $msAvg . '%',
-                        $ms->start_date?->format('d/m/Y') ?? '-',
-                        $ms->end_date?->format('d/m/Y') ?? '-',
-                        '',
-                    ],
-                ];
-                continue;
-            }
 
             // Regular milestone
             $mCount++;
@@ -220,6 +202,31 @@ class SubProgramSheet implements FromArray, WithTitle, WithStyles, WithColumnWid
                     ];
                 }
             }
+        }
+
+        // PASS 2: Key Results (Pin to bottom)
+        $krCount = 0;
+        foreach ($this->sub->milestones as $ms) {
+            if ($ms->type !== 'key_result') continue;
+
+            $krCount++;
+            $acts = $ms->activities;
+            $msAvg = $acts->isEmpty() ? 0 : round($acts->avg('progress'));
+
+            $rows[] = [
+                'type' => 'kr',
+                'data' => [
+                    'KR.' . $krCount,
+                    $ms->name,
+                    '',
+                    '',
+                    $ms->bobot ? $ms->bobot . '%' : '',
+                    $msAvg . '%',
+                    $ms->start_date?->format('d/m/Y') ?? '-',
+                    $ms->end_date?->format('d/m/Y') ?? '-',
+                    '',
+                ],
+            ];
         }
 
         // Store meta for styling, return only data

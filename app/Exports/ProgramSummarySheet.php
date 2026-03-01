@@ -144,6 +144,7 @@ class ProgramSummarySheet implements FromArray, WithTitle, WithStyles, WithColum
                 'dates' => ['start' => $sub->start_date, 'end' => $sub->end_date]
             ];
 
+            // 1. Regular Milestones
             $mGroup = 1;
             $mCount = 0;
             foreach ($sub->milestones as $ms) {
@@ -166,6 +167,31 @@ class ProgramSummarySheet implements FromArray, WithTitle, WithStyles, WithColum
                         $ms->start_date?->format('d/m/Y') ?? '-',
                         $ms->end_date?->format('d/m/Y') ?? '-',
                         $ms->activities->count(),
+                    ], array_fill(0, count($this->timelineMeta) * 4, '')),
+                    'dates' => ['start' => $ms->start_date, 'end' => $ms->end_date]
+                ];
+            }
+
+            // 2. Key Results (Bottom)
+            $krCount = 0;
+            foreach ($sub->milestones as $ms) {
+                if ($ms->type !== 'key_result') continue;
+
+                $krCount++;
+                $msProgress = $ms->activities->isEmpty() ? 0 : round($ms->activities->avg('progress'));
+
+                $rows[] = [
+                    'type' => 'kr',
+                    'data' => array_merge([
+                        '',         // Col A
+                        'KR.' . $krCount, // Col B: KR No
+                        $ms->name,  // Col C: KR Name
+                        '',         // Col D
+                        $ms->bobot ?? '',
+                        $msProgress . '%',
+                        $ms->start_date?->format('d/m/Y') ?? '-',
+                        $ms->end_date?->format('d/m/Y') ?? '-',
+                        sprintf('%s', $ms->activities->count()), // Cast count to string for Excel consistency
                     ], array_fill(0, count($this->timelineMeta) * 4, '')),
                     'dates' => ['start' => $ms->start_date, 'end' => $ms->end_date]
                 ];
@@ -227,7 +253,7 @@ class ProgramSummarySheet implements FromArray, WithTitle, WithStyles, WithColum
                         ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
 
                     // Grid borders for table
-                    if (in_array($type, ['th', 'sub', 'milestone', 'months'])) {
+                    if (in_array($type, ['th', 'sub', 'milestone', 'kr', 'months'])) {
                         $sheet->getStyle($range)->applyFromArray([
                             'borders' => [
                                 'allBorders' => [
@@ -278,6 +304,19 @@ class ProgramSummarySheet implements FromArray, WithTitle, WithStyles, WithColum
                                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF1F5F9']],
                             ]);
                             $this->colorTimeline($sheet, $row, $rowObj['dates'], $programStart, 'FF312E81');
+                            break;
+                            
+                        case 'kr':
+                            $sheet->mergeCells("C{$row}:D{$row}");
+                            $sheet->getStyle($range)->applyFromArray([
+                                'font' => ['bold' => true, 'color' => ['argb' => 'FF991B1B']],
+                                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFF1F2']],
+                            ]);
+                            // Special background for Col B in KRs
+                            $sheet->getStyle("B{$row}")->getFill()
+                                ->setFillType(Fill::FILL_SOLID)
+                                ->getStartColor()->setARGB('FFFFE4E6');
+                            $this->colorTimeline($sheet, $row, $rowObj['dates'], $programStart, 'FFEF4444');
                             break;
                         
                         case 'milestone':

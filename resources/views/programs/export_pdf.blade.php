@@ -108,12 +108,19 @@
             font-size: 7pt;
             font-style: italic;
         }
+        .row-kr {
+            background-color: #fff1f2;
+            font-weight: bold;
+            color: #991b1b;
+            font-size: 8pt;
+        }
 
         /* Timeline Colors */
         .bar-sub { background-color: #312e81 !important; }
         .bar-ms { background-color: #818cf8 !important; }
         .bar-act { background-color: #3b82f6 !important; }
         .bar-subact { background-color: #94a3b8 !important; }
+        .bar-kr { background-color: #ef4444 !important; }
 
         /* Helpers */
         .text-center { text-align: center; }
@@ -182,7 +189,7 @@
                     <th rowspan="2" class="col-date week-header">Selesai</th>
                     <th rowspan="2" class="col-status week-header">Jml Activity</th>
                     @foreach($timelineMeta as $m)
-                        <th colspan="4" class="month-header">{{ $m['month'] }}</th>
+                        <th colspan="4" class="month-header">{{ substr($m['month'], 0, 3) }}</th>
                     @endforeach
                 </tr>
                 <tr>
@@ -214,6 +221,7 @@
                         @endfor
                     </tr>
 
+                    {{-- 1. Dividers & Milestones --}}
                     @php $mGroup = 1; $mCount = 0; @endphp
                     @foreach($sub->milestones as $ms)
                         @if($ms->type === 'divider' || $ms->type === 'key_result')
@@ -237,6 +245,29 @@
                             <td class="text-center">{{ $ms->activities->count() }}</td>
                             @for($i=0; $i < count($timelineMeta)*4; $i++)
                                 <td class="col-timeline {{ in_array($i, $msTimeline) ? 'bar-ms' : '' }}"></td>
+                            @endfor
+                        </tr>
+                    @endforeach
+
+                    {{-- 2. Key Results (Bottom) --}}
+                    @php $krCount = 0; @endphp
+                    @foreach($sub->milestones as $ms)
+                        @if($ms->type !== 'key_result') @continue @endif
+                        @php
+                            $krCount++;
+                            $msProgress = $ms->activities->isEmpty() ? 0 : round($ms->activities->avg('progress'));
+                            $msTimeline = getTimelineRange($ms->start_date, $ms->end_date, $programStart, count($timelineMeta));
+                        @endphp
+                        <tr class="row-kr">
+                            <td class="text-center" style="font-size: 7pt; color: #991b1b;">KR.{{ $krCount }}</td>
+                            <td class="staircase-2">{{ $ms->name }}</td>
+                            <td class="text-center">{{ $ms->bobot ?? '-' }}</td>
+                            <td class="text-center">{{ $msProgress }}%</td>
+                            <td class="text-center">{{ $ms->start_date?->format('d/m/Y') ?? '-' }}</td>
+                            <td class="text-center">{{ $ms->end_date?->format('d/m/Y') ?? '-' }}</td>
+                            <td class="text-center">{{ $ms->activities->count() }}</td>
+                            @for($i=0; $i < count($timelineMeta)*4; $i++)
+                                <td class="col-timeline {{ in_array($i, $msTimeline) ? 'bar-kr' : '' }}"></td>
                             @endfor
                         </tr>
                     @endforeach
@@ -291,6 +322,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {{-- 1. Dividers & Milestones --}}
                     @php $mGroup = 1; $mCount = 0; @endphp
                     @foreach($sub->milestones as $ms)
                         @if($ms->type === 'divider')
@@ -357,6 +389,29 @@
                                 </tr>
                             @endforeach
                         @endforeach
+                    @endforeach
+
+                    {{-- 2. Key Results (Bottom) --}}
+                    @php $krCount = 0; @endphp
+                    @foreach($sub->milestones as $ms)
+                        @if($ms->type !== 'key_result') @continue @endif
+                        @php
+                            $krCount++;
+                            $msProgress = $ms->activities->isEmpty() ? 0 : round($ms->activities->avg('progress'));
+                            $msTimeline = getTimelineRange($ms->start_date, $ms->end_date, $programStart, count($timelineMeta));
+                        @endphp
+                        <tr class="row-kr">
+                            <td class="text-center" style="font-size: 7pt; color: #991b1b;">KR.{{ $krCount }}</td>
+                            <td class="staircase-1">{{ $ms->name }}</td>
+                            <td class="text-center">{{ $ms->bobot ?? '-' }}</td>
+                            <td class="text-center">{{ $msProgress }}%</td>
+                            <td class="text-center">{{ $ms->start_date?->format('d/m/Y') ?? '-' }}</td>
+                            <td class="text-center">{{ $ms->end_date?->format('d/m/Y') ?? '-' }}</td>
+                            <td class="text-center">-</td>
+                            @for($i=0; $i < count($timelineMeta)*4; $i++)
+                                <td class="col-timeline {{ in_array($i, $msTimeline) ? 'bar-kr' : '' }}"></td>
+                            @endfor
+                        </tr>
                     @endforeach
                 </tbody>
             </table>

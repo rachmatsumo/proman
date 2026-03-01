@@ -54,8 +54,12 @@ class HierarchyDuplicateController extends Controller
         $clone = $original->replicate();
         $clone->name = $original->name . ' (Copy)';
         
-        $minOrder = SubProgram::where('program_id', $original->program_id)->min('sort_order') ?? 0;
-        $clone->sort_order = $minOrder - 1;
+        // Push down subsequent items and place this one right below original
+        SubProgram::where('program_id', $original->program_id)
+            ->where('sort_order', '>', $original->sort_order)
+            ->increment('sort_order');
+            
+        $clone->sort_order = $original->sort_order + 1;
         $clone->save();
 
         if ($withMilestones) {
@@ -83,8 +87,12 @@ class HierarchyDuplicateController extends Controller
             $clone->name = $original->name . ' (Copy)';
         }
         
-        $minOrder = Milestone::where('sub_program_id', $subProgramId)->min('sort_order') ?? 0;
-        $clone->sort_order = $minOrder - 1;
+        // Push down subsequent milestones in the target sub_program
+        Milestone::where('sub_program_id', $subProgramId)
+            ->where('sort_order', '>', $original->sort_order)
+            ->increment('sort_order');
+            
+        $clone->sort_order = $original->sort_order + 1;
         $clone->save();
 
         if ($withActivities) {
@@ -111,8 +119,12 @@ class HierarchyDuplicateController extends Controller
             $clone->name = $original->name . ' (Copy)';
         }
         
-        $minOrder = Activity::where('milestone_id', $milestoneId)->min('sort_order') ?? 0;
-        $clone->sort_order = $minOrder - 1;
+        // Push down subsequent activities in the target milestone
+        Activity::where('milestone_id', $milestoneId)
+            ->where('sort_order', '>', $original->sort_order)
+            ->increment('sort_order');
+            
+        $clone->sort_order = $original->sort_order + 1;
         $clone->save();
         
         if ($withSubActivities) {
@@ -140,8 +152,12 @@ class HierarchyDuplicateController extends Controller
             $clone->name = $original->name . ' (Copy)';
         }
         
-        $minOrder = \App\Models\SubActivity::where('activity_id', $activityId)->min('sort_order') ?? 0;
-        $clone->sort_order = $minOrder - 1;
+        // Push down subsequent sub-activities in the target activity
+        \App\Models\SubActivity::where('activity_id', $activityId)
+            ->where('sort_order', '>', $original->sort_order)
+            ->increment('sort_order');
+            
+        $clone->sort_order = $original->sort_order + 1;
         $clone->save();
         
         return $clone;

@@ -713,28 +713,28 @@
                 @endphp
                 
                 @if($ms->type === 'divider')
-                    {{-- DIVIDER RENDER --}}
-                    <div class="d-flex align-items-center mb-1 mt-2 milestone-card" data-sub="{{ $sub->id }}" data-id="{{ $ms->id }}" id="ms-{{ $ms->id }}">
+                    {{-- DIVIDER RENDER - Subtle/Samar Style --}}
+                    <div class="d-flex align-items-center mb-3 mt-4 milestone-card divider-row" data-sub="{{ $sub->id }}" data-id="{{ $ms->id }}" id="ms-{{ $ms->id }}">
                         @if($userRole === 'administrator' || $userRole === 'manager')
-                        <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 ms-drag-handle" style="cursor: grab;"></i>
+                        <i class="fa-solid fa-grip-vertical text-muted opacity-25 me-3 ms-drag-handle" style="cursor: grab; font-size: 0.8rem;"></i>
                         @endif
-                        <div class="flex-grow-1 border-bottom border-2 border-warning opacity-50"></div>
-                        <div class="mx-3 fw-bold text-warning text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.1em;">
+                        <div class="flex-grow-1 border-bottom border-secondary border-opacity-25" style="border-bottom-style: dashed !important; border-bottom-width: 1px !important;"></div>
+                        <div class="mx-3 fw-medium text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.15em; opacity: 0.8;">
                             {{ $ms->name }}
                         </div>
-                        <div class="flex-grow-1 border-bottom border-2 border-warning opacity-50"></div>
-                        <div class="ms-3">
+                        <div class="flex-grow-1 border-bottom border-secondary border-opacity-25" style="border-bottom-style: dashed !important; border-bottom-width: 1px !important;"></div>
+                        <div class="ms-3 d-flex gap-1 align-items-center">
                             @if($userRole === 'administrator' || $userRole === 'manager')
-                            <button type="button" class="btn btn-sm p-1" style="color: #4338ca; background: none; border: none; font-size: 0.75rem;" title="Edit Section Name"
+                            <button type="button" class="btn btn-sm btn-light border-0 p-1 rounded-circle" style="width: 24px; height: 24px; color: #64748b; background: rgba(0,0,0,0.03);" title="Edit Section Name"
                                     data-bs-toggle="modal" data-bs-target="#modalEditMilestone"
                                     onclick="openEditMilestone({{ $ms->id }}, {{ $sub->id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}', '{{ $ms->type }}')">
-                                <i class="fa-solid fa-pen-to-square"></i>
+                                <i class="fa-solid fa-pen-to-square" style="font-size: 0.7rem;"></i>
                             </button>
                             @endif
                             @if($userRole === 'administrator')
-                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Section"
+                            <button type="button" class="btn btn-sm btn-light border-0 p-1 rounded-circle" style="width: 24px; height: 24px; color: #ef4444; background: rgba(0,0,0,0.03);" title="Hapus Section"
                                     onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus section divider ini?', () => { document.querySelector('#ms-{{ $ms->id }}').remove(); recalculateHierarchyNumbering(); })">
-                                <i class="fa-solid fa-trash-can"></i>
+                                <i class="fa-solid fa-trash-can" style="font-size: 0.7rem;"></i>
                             </button>
                             @endif
                         </div>
@@ -2196,12 +2196,27 @@
     function setRangePicker(pickerId, start, end) {
         const fp = _fpInstances[pickerId];
         if (!fp) return;
-        if (start && end) {
-            fp.setDate([start, end], false);
+        
+        // Convert strings to JavaScript Date objects to avoid Flatpickr parsing issues
+        // due to mismatched dateFormat configurations.
+        const parseDate = (dString) => {
+            if (!dString) return null;
+            const parsed = new Date(dString);
+            return isNaN(parsed) ? null : parsed;
+        };
+
+        const startDate = parseDate(start);
+        const endDate = parseDate(end);
+
+        if (startDate && endDate) {
+            fp.setDate([startDate, endDate], false);
+        } else if (startDate) {
+            fp.setDate(startDate, false);
         } else {
             fp.clear();
         }
     }
+
 
     // ---- EDIT Program ----
     function openEditProgram(id, prefix, theme, name, desc, start, end) {
@@ -2356,6 +2371,12 @@
     }
 
     async function refreshPageContent() {
+        // Force cleanup of any stuck modal backdrops before replacing DOM
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
         // Collect currently expanded accordion IDs
         const expandedIds = Array.from(document.querySelectorAll('.hierarchy-collapse.show'))
             .map(el => el.id);
@@ -2899,7 +2920,9 @@
             const data = await response.json();
             
             if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalDuplicate')).hide();
+                const modalEl = document.getElementById('modalDuplicate');
+                bootstrap.Modal.getInstance(modalEl).hide();
+                
                 await refreshPageContent();
                 Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message, timer: 1500, showConfirmButton: false, heightAuto: false });
             } else {
@@ -3279,7 +3302,7 @@ document.getElementById('hierarchySearch')?.addEventListener('input', function(e
             noResultsEl.classList.add('d-none');
         }
     }
-});
+})
 </script>
 @endpush
 @endsection
