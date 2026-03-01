@@ -4,21 +4,23 @@
 @section('header_title', 'Agenda & Scheduling')
 
 @section('header_actions')
-    <button type="button" class="btn btn-success btn-sm shadow-sm rounded-pill px-3 me-2" onclick="copyWAReport()">
-        <i class="fa-brands fa-whatsapp me-1"></i> Copy for WA
-    </button>
-    <button type="button" class="btn btn-primary btn-sm shadow-sm rounded-pill px-3" onclick="openCreateModal()">
-        <i class="fa-solid fa-plus me-1"></i> New Agenda
-    </button>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-success btn-sm shadow-sm rounded-pill px-3 d-flex align-items-center" onclick="copyWAReport()">
+            <i class="fa-brands fa-whatsapp me-md-1"></i> <span class="d-none d-md-inline">Copy for WA</span>
+        </button>
+        <button type="button" class="btn btn-primary btn-sm shadow-sm rounded-pill px-3 d-flex align-items-center" onclick="openCreateModal()">
+            <i class="fa-solid fa-plus me-md-1"></i> <span class="d-none d-md-inline">New Agenda</span>
+        </button>
+    </div>
 @endsection
 
 @section('content')
-<div class="container-fluid py-4 h-100 overflow-auto">
-    <div class="row g-4 h-100">
+<div class="container-fluid py-3 py-md-4 h-100 overflow-auto">
+    <div class="row g-3 g-md-4 h-100">
         <!-- Calendar/Date Picker Sidebar -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-body p-4">
+        <div class="col-lg-3 flex-shrink-0">
+            <div class="card border-0 shadow-sm rounded-4 mb-3 mb-md-4">
+                <div class="card-body p-3 p-md-4">
                     <h6 class="fw-bold mb-3 d-flex align-items-center">
                         <i class="fa-solid fa-calendar-day text-primary me-2"></i> Select Date
                     </h6>
@@ -28,17 +30,17 @@
                         <h6 class="fw-bold mb-3 small text-uppercase text-muted" style="letter-spacing: 0.1em;">Statistics</h6>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="small text-muted">Total Tasks</span>
-                            <span class="badge bg-primary rounded-pill">{{ $agendas->count() }}</span>
+                            <span class="badge bg-primary rounded-pill">{{ $agendas instanceof \Illuminate\Support\Collection ? $agendas->flatten()->count() : $agendas->count() }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="small text-muted">Completed</span>
-                            <span class="badge bg-success rounded-pill">{{ $agendas->where('status', 'Done')->count() }}</span>
+                            <span class="badge bg-success rounded-pill">{{ ($agendas instanceof \Illuminate\Support\Collection ? $agendas->flatten() : $agendas)->where('status', 'Done')->count() }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4 bg-primary text-white overflow-hidden position-relative" style="min-height: 150px;">
+            <div class="card border-0 shadow-sm rounded-4 bg-primary text-white overflow-hidden position-relative d-none d-lg-block" style="min-height: 150px;">
                  <div class="card-body p-4 z-1 position-relative">
                     <h5 class="fw-bold mb-1">Stay Organized</h5>
                     <p class="small mb-0">Track your hourly activities and manage multiple PICs efficiently.</p>
@@ -48,32 +50,32 @@
         </div>
 
         <!-- Timeline/Weekly View -->
-        <div class="col-md-9 h-100 d-flex flex-column">
-            <div class="card border-0 shadow-sm rounded-4 flex-grow-1 overflow-hidden d-flex flex-column">
-                <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
-                    <div>
+        <div class="col-lg-9 h-100 d-flex flex-column">
+            <div class="card border-0 shadow-sm rounded-4 flex-grow-1 overflow-hidden d-flex flex-column" style="min-height: 500px;">
+                <div class="card-header bg-white py-3 px-3 px-md-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div class="text-center text-md-start">
                         <h5 class="fw-bold mb-0">
                             @if($view === 'weekly')
-                                Week: {{ $startOfWeek->format('d M') }} - {{ $endOfWeek->format('d M Y') }}
+                                {{ $startOfWeek->format('d M') }} - {{ $endOfWeek->format('d M Y') }}
                             @else
                                 {{ \Carbon\Carbon::parse($date)->format('l, d F Y') }}
                             @endif
                         </h5>
                         <p class="small text-muted mb-0">{{ $view === 'weekly' ? 'Weekly Overview' : 'Hourly Timeline' }}</p>
                     </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="btn-group btn-group-sm p-1 bg-light rounded-pill">
+                    <div class="d-flex align-items-center justify-content-center gap-2 gap-md-3">
+                        <div class="btn-group btn-group-sm p-1 bg-light rounded-pill flex-shrink-0">
                             <button class="btn {{ $view === 'daily' ? 'btn-white shadow-sm' : 'btn-light border-0' }} rounded-pill px-3 fw-bold" 
-                                    onclick="switchView('daily')" style="font-size: 0.7rem;">Daily</button>
+                                    onclick="switchView('daily')" style="font-size: 0.65rem;">Daily</button>
                             <button class="btn {{ $view === 'weekly' ? 'btn-white shadow-sm' : 'btn-light border-0' }} rounded-pill px-3 fw-bold" 
-                                    onclick="switchView('weekly')" style="font-size: 0.7rem;">Weekly</button>
+                                    onclick="switchView('weekly')" style="font-size: 0.65rem;">Weekly</button>
                         </div>
-                        <div class="btn-group btn-group-sm">
+                        <div class="btn-group btn-group-sm flex-shrink-0">
                             <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" 
                                     onclick="changeDate('{{ $view === 'weekly' ? $startOfWeek->copy()->subWeek()->format('Y-m-d') : \Carbon\Carbon::parse($date)->subDay()->format('Y-m-d') }}')">
                                 <i class="fa-solid fa-chevron-left"></i>
                             </button>
-                            <button class="btn btn-outline-light text-dark border-light-subtle shadow-none px-3" onclick="changeDate('{{ \Carbon\Carbon::today()->format('Y-m-d') }}')">Today</button>
+                            <button class="btn btn-outline-light text-dark border-light-subtle shadow-none px-2" onclick="changeDate('{{ \Carbon\Carbon::today()->format('Y-m-d') }}')">Today</button>
                             <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" 
                                     onclick="changeDate('{{ $view === 'weekly' ? $startOfWeek->copy()->addWeek()->format('Y-m-d') : \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d') }}')">
                                 <i class="fa-solid fa-chevron-right"></i>

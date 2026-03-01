@@ -42,6 +42,33 @@
 .flatpickr-day.inRange { background: #e0e7ff; border-color: #e0e7ff; color: #3730a3; box-shadow: -4px 0 0 #e0e7ff, 4px 0 0 #e0e7ff; }
 .flatpickr-day.selected.startRange, .flatpickr-day.startRange.startRange { border-radius: 8px 0 0 8px; }
 .flatpickr-day.selected.endRange, .flatpickr-day.endRange.endRange { border-radius: 0 8px 8px 0; }
+
+/* Sub Program & Milestone refinements */
+.sub-card .card-header .btn-sm,
+.milestone-card .card-header .btn-sm,
+.milestone-card .px-3.py-2 .btn-sm {
+    min-width: 32px;
+    height: 32px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px !important;
+}
+
+.sub-card .card-header {
+    transition: border-radius 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Removal of bottom radius when expanded */
+.sub-card:has(.sub-collapse.show) .card-header {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+/* Sub-program activities progress bar transition */
+.sub-card .collapse.show + div[style*="height: 4px"] {
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
 </style>
 @endpush
 @push('scripts')
@@ -146,10 +173,10 @@
                 <i class="fa-solid fa-diagram-project"></i>
             </div>
             <div class="position-relative">
-                <div class="d-flex flex-column align-items-md-start justify-content-between gap-2" id="program-header-content">
-                    <div>
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(255,255,255,0.15);">
+                <div class="d-flex flex-column align-items-center align-items-md-start justify-content-between gap-3" id="program-header-content">
+                    <div class="text-center text-md-start">
+                        <div class="d-flex flex-column flex-md-row align-items-center gap-3 mb-2">
+                            <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background: rgba(255,255,255,0.15);">
                                 <i class="fa-solid fa-folder-open fs-4"></i>
                             </div>
                             <div>
@@ -163,9 +190,9 @@
                                     </div>
                                 @endif
                                 @if($program->description)
-                                    <p class="text-white opacity-75 mb-3" style="font-size: 0.85rem; max-width: 600px;">{{ $program->description }}</p>
+                                    <p class="text-white opacity-75 mb-3 d-none d-md-block" style="font-size: 0.85rem; max-width: 600px;">{{ $program->description }}</p>
                                 @endif
-                                <div class="d-flex align-items-center gap-2 text-white opacity-75" style="font-size: 0.78rem;">
+                                <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 text-white opacity-75" style="font-size: 0.78rem;">
                                     <i class="fa-regular fa-calendar me-1"></i>
                                     <span>{{ $program->start_date ? $program->start_date->format('d M Y') : 'N/A' }}</span>
                                     <span class="opacity-40 mx-1">→</span>
@@ -174,10 +201,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 flex-shrink-0 flex-wrap w-100 justify-content-end">
+                    <div class="d-flex gap-2 flex-shrink-0 flex-wrap w-100 justify-content-center justify-content-md-end">
                         {{-- Edit Program --}}
                         @if($userRole === 'administrator' || $userRole === 'manager')
-                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
+                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-2 px-3 flex-grow-1 flex-md-grow-0"
                                 style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white;"
                                 onclick="openEditProgram({{ $program->id }}, '{{ addslashes($program->prefix ?? '') }}', '{{ addslashes($program->theme ?? '') }}', '{{ addslashes($program->name) }}', '{{ addslashes($program->description ?? '') }}', '{{ $program->start_date ? $program->start_date->format('Y-m-d') : '' }}', '{{ $program->end_date ? $program->end_date->format('Y-m-d') : '' }}')"
                                 data-bs-toggle="modal" data-bs-target="#modalEditProgram">
@@ -186,7 +213,7 @@
                         @endif
                         {{-- Add Sub Program --}}
                         @if($userRole === 'administrator' || $userRole === 'manager')
-                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
+                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-2 px-3 flex-grow-1 flex-md-grow-0"
                                 style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;"
                                 data-bs-toggle="modal" data-bs-target="#modalAddSubProgram">
                             <i class="fa-solid fa-plus"></i> Sub Program
@@ -194,7 +221,7 @@
                         @endif
                         {{-- Delete Program --}}
                         @if($userRole === 'administrator')
-                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center gap-2 px-3"
+                        <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-2 px-3 flex-grow-1 flex-md-grow-0"
                                 style="background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5;"
                                 onclick="if(confirm('Hapus program ini secara permanen?')) deleteHierarchyItem('{{ route('programs.destroy', $program->id) }}', '', () => { window.location.href = '{{ route('projects.gantt') }}'; })">
                             <i class="fa-solid fa-trash-can"></i> Delete
@@ -306,8 +333,11 @@
         ];
     @endphp
 
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-        <span class="text-muted fw-semibold me-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;">Auto Status:</span>
+    <div class="d-flex align-items-center gap-2 overflow-x-auto pb-2 flex-nowrap" style="scrollbar-width: none; -ms-overflow-style: none;">
+        <style>
+            .overflow-x-auto::-webkit-scrollbar { display: none; }
+        </style>
+        <span class="text-muted fw-semibold me-1 text-nowrap" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;">Auto Status:</span>
 
         @foreach($chipConfig as $label => $c)
         @php
@@ -315,7 +345,7 @@
             $chipId    = 'chip-' . strtolower($label);
         @endphp
         <div id="{{ $chipId }}"
-             class="d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 fw-semibold border chip-status"
+             class="d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 fw-semibold border chip-status text-nowrap flex-shrink-0"
              style="font-size: 0.72rem; color: {{ $c['color'] }}; background: {{ $c['bg'] }}; border-color: {{ $c['color'] }}33 !important; cursor: pointer;">
             <i class="fa-solid {{ $c['icon'] }}"></i>
             <span>{{ $label }}</span>
@@ -368,42 +398,43 @@
 
 
 
-    {{-- ===== TABS NAVIGATION ===== --}}
-    <ul class="nav nav-pills mb-4 gap-2 pb-3 border-bottom border-light-subtle" id="programTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="hierarki-tab" data-bs-toggle="pill" data-bs-target="#hierarki" type="button" role="tab" aria-controls="hierarki" aria-selected="true" style="transition: all 0.2s;">
-                <i class="fa-solid fa-diagram-project"></i> Hierarki
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab" id="timeline-tab" data-bs-toggle="pill" data-bs-target="#timeline" type="button" role="tab" aria-controls="timeline" aria-selected="false" data-url="{{ route('programs.partial-gantt', $program->id) }}" style="transition: all 0.2s;">
-                <i class="fa-solid fa-chart-gantt"></i> Timeline
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false" data-url="{{ route('programs.partial-calendar', $program->id) }}" style="transition: all 0.2s;">
-                <i class="fa-solid fa-calendar-days"></i> Calendar
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen" type="button" role="tab" aria-controls="dokumen" aria-selected="false" style="transition: all 0.2s;">
-                <i class="fa-solid fa-folder-open"></i> Document
-                @php $totalAttachments = collect($attachmentsData)->pluck('attachments')->flatten(1)->count(); @endphp
-                <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $totalAttachments ?? 0 }}</span>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="member-tab" data-bs-toggle="pill" data-bs-target="#member" type="button" role="tab" aria-controls="member" aria-selected="false" style="transition: all 0.2s;">
-                <i class="fa-solid fa-users-gear"></i> Members
-                <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $program->members->count() }}</span>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2" id="riwayat-tab" data-bs-toggle="pill" data-bs-target="#riwayat" type="button" role="tab" aria-controls="riwayat" aria-selected="false" style="transition: all 0.2s;">
-                <i class="fa-solid fa-clock-rotate-left"></i> History
-            </button>
-        </li>
-    </ul>
+    <div class="overflow-x-auto pb-1" style="scrollbar-width: none; -ms-overflow-style: none;">
+        <ul class="nav nav-pills mb-4 gap-2 flex-nowrap border-bottom border-light-subtle pb-3" id="programTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="hierarki-tab" data-bs-toggle="pill" data-bs-target="#hierarki" type="button" role="tab" aria-controls="hierarki" aria-selected="true" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-diagram-project"></i> Hierarki
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab text-nowrap" id="timeline-tab" data-bs-toggle="pill" data-bs-target="#timeline" type="button" role="tab" aria-controls="timeline" aria-selected="false" data-url="{{ route('programs.partial-gantt', $program->id) }}" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-chart-gantt"></i> Timeline
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab text-nowrap" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false" data-url="{{ route('programs.partial-calendar', $program->id) }}" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-calendar-days"></i> Calendar
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen" type="button" role="tab" aria-controls="dokumen" aria-selected="false" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-folder-open"></i> Document
+                    @php $totalAttachments = collect($attachmentsData)->pluck('attachments')->flatten(1)->count(); @endphp
+                    <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $totalAttachments ?? 0 }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="member-tab" data-bs-toggle="pill" data-bs-target="#member" type="button" role="tab" aria-controls="member" aria-selected="false" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-users-gear"></i> Members
+                    <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $program->members->count() }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="riwayat-tab" data-bs-toggle="pill" data-bs-target="#riwayat" type="button" role="tab" aria-controls="riwayat" aria-selected="false" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> History
+                </button>
+            </li>
+        </ul>
+    </div>
 
     <style>
         .nav-pills .nav-link { color: #64748b; background: transparent; }
@@ -460,9 +491,9 @@
             $subTotal = $subActs->count();
             $subAvg   = round($calcSubProgress($sub));
         @endphp
-        <div class="card shadow-sm border-0 overflow-hidden sub-card mb-3 selectable-row" data-name="{{ strtolower($sub->name) }}" data-id="{{ $sub->id }}">
+        <div class="card shadow-sm border-0 sub-card mb-3 selectable-row rounded-4" data-name="{{ strtolower($sub->name) }}" data-id="{{ $sub->id }}">
             {{-- Sub Program Header --}}
-            <div class="card-header px-4 py-3 d-flex justify-content-between align-items-center gap-3"
+            <div class="card-header px-4 py-3 d-flex justify-content-between align-items-center gap-3 rounded-4"
                  style="background: linear-gradient(to right, #1e3a5f, #1d4ed8); border: none;">
                 @if($userRole === 'administrator' || $userRole === 'manager')
                 <div class="sub-drag-handle py-2" style="cursor: grab;">
@@ -504,62 +535,122 @@
                         @endif
                     </div>
                 </div>
-                <div class="d-flex gap-2 align-items-center flex-shrink-0">
-                    {{-- Edit Sub Program --}}
-                    @if($userRole === 'administrator' || $userRole === 'manager')
-                    <button type="button"
-                            class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
-                            data-bs-toggle="modal" data-bs-target="#modalEditSubProgram"
-                            onclick="openEditSubProgram({{ $sub->id }}, {{ $program->id }}, '{{ addslashes($sub->name) }}', '{{ $sub->bobot ?? '' }}', '{{ addslashes($sub->description ?? '') }}', '{{ $sub->start_date ? $sub->start_date->format('Y-m-d') : '' }}', '{{ $sub->end_date ? $sub->end_date->format('Y-m-d') : '' }}')">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                    </button>
-                    <button type="button"
-                            class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
-                            onclick="openDuplicateModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
-                        <i class="fa-solid fa-copy"></i> Duplikat
-                    </button>
-                    @endif
-                    {{-- Attachments Sub Program --}}
-                    <button type="button"
-                            class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fbbf24; font-size: 0.72rem;"
-                            onclick="openAttachmentModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
-                        <i class="fa-solid fa-paperclip"></i>
-                        Lampiran
-                        @if($sub->attachments->count() > 0)
-                        <span class="badge rounded-pill ms-1" style="background: #fbbf24; color: #1e1b4b; font-size: 0.6rem;">{{ $sub->attachments->count() }}</span>
+                <div class="d-flex gap-1 align-items-center flex-shrink-0 ms-auto">
+                    {{-- Desktop View Actions --}}
+                    <div class="d-none d-md-flex gap-1 align-items-center">
+                        @if($userRole === 'administrator' || $userRole === 'manager')
+                        <button type="button" class="btn btn-sm fw-semibold"
+                                style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
+                                data-bs-toggle="modal" data-bs-target="#modalEditSubProgram"
+                                onclick="openEditSubProgram({{ $sub->id }}, {{ $program->id }}, '{{ addslashes($sub->name) }}', '{{ $sub->bobot ?? '' }}', '{{ addslashes($sub->description ?? '') }}', '{{ $sub->start_date ? $sub->start_date->format('Y-m-d') : '' }}', '{{ $sub->end_date ? $sub->end_date->format('Y-m-d') : '' }}')">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-sm fw-semibold"
+                                style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #bfdbfe; font-size: 0.72rem;"
+                                title="Duplicate"
+                                data-bs-toggle="modal" data-bs-target="#modalDuplicate"
+                                onclick="openDuplicateModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
                         @endif
-                    </button>
-                    {{-- Add Milestone & Key Result --}}
-                    @if($userRole === 'administrator' || $userRole === 'manager')
-                    <div class="d-flex gap-1">
 
-                        <button type="button"
-                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
+                        <button type="button" class="btn btn-sm fw-semibold px-2"
+                                style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fbbf24; font-size: 0.72rem;"
+                                title="Lampiran"
+                                data-bs-toggle="modal" data-bs-target="#modalAttachments"
+                                onclick="openAttachmentModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                            <i class="fa-solid fa-paperclip"></i>
+                            @if($sub->attachments->count() > 0)
+                            <span class="badge rounded-pill ms-1" style="background: #fbbf24; color: #1e1b4b; font-size: 0.6rem;">{{ $sub->attachments->count() }}</span>
+                            @endif
+                        </button>
+
+                        @if($userRole === 'administrator' || $userRole === 'manager')
+                        <button type="button" class="btn btn-sm fw-semibold"
                                 style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; font-size: 0.72rem;"
                                 data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
                                 onclick="openAddMilestone({{ $sub->id }}, 'milestone')">
-                            <i class="fa-solid fa-plus"></i> Milestone
+                            <i class="fa-solid fa-plus me-1"></i> MS
                         </button>
-                        <button type="button"
-                                class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                style="background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3); color: #fbbf24; font-size: 0.72rem;"
+                        <button type="button" class="btn btn-sm fw-semibold"
+                                style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #99f6e4; font-size: 0.72rem;"
+                                title="Add Section Divider"
                                 data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
                                 onclick="openAddMilestone({{ $sub->id }}, 'divider')">
-                            <i class="fa-solid fa-minus"></i> Section Divider
+                            <i class="fa-solid fa-grip-lines"></i>
                         </button>
+                        @endif
+
+                        @if($userRole === 'administrator')
+                        <button type="button" class="btn btn-sm"
+                                style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.72rem;"
+                                title="Delete"
+                                onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        @endif
                     </div>
-                    @endif
-                    {{-- Delete Sub Program --}}
-                    @if($userRole === 'administrator')
-                    <button type="button" class="btn btn-sm d-flex align-items-center gap-1 px-2"
-                            style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.72rem;"
-                            onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                    @endif
+
+                    {{-- Mobile View Actions (Dropdown) --}}
+                    <div class="dropdown d-md-none">
+                        <button class="btn btn-sm text-white border-white border-opacity-25 px-2" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" style="background: rgba(255,255,255,0.1);">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="font-size: 0.8rem; border-radius: 12px;">
+                            @if($userRole === 'administrator' || $userRole === 'manager')
+                            <li>
+                                <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                   data-bs-toggle="modal" data-bs-target="#modalEditSubProgram"
+                                   onclick="openEditSubProgram({{ $sub->id }}, {{ $program->id }}, '{{ addslashes($sub->name) }}', '{{ $sub->bobot ?? '' }}', '{{ addslashes($sub->description ?? '') }}', '{{ $sub->start_date ? $sub->start_date->format('Y-m-d') : '' }}', '{{ $sub->end_date ? $sub->end_date->format('Y-m-d') : '' }}')">
+                                    <i class="fa-solid fa-pen-to-square text-primary" style="width: 16px;"></i> Edit Sub Program
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                   data-bs-toggle="modal" data-bs-target="#modalDuplicate"
+                                   onclick="openDuplicateModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                                    <i class="fa-solid fa-copy text-primary" style="width: 16px;"></i> Duplikat
+                                </a>
+                            </li>
+                            @endif
+                            <li>
+                                <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                   data-bs-toggle="modal" data-bs-target="#modalAttachments"
+                                   onclick="openAttachmentModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
+                                    <i class="fa-solid fa-paperclip text-warning" style="width: 16px;"></i> Lampiran
+                                    @if($sub->attachments->count() > 0)
+                                    <span class="badge bg-warning text-dark ms-auto">{{ $sub->attachments->count() }}</span>
+                                    @endif
+                                </a>
+                            </li>
+                             @if($userRole === 'administrator' || $userRole === 'manager')
+                             <li class="dropdown-divider my-1 opacity-50"></li>
+                             <li>
+                                 <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                    data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                    onclick="openAddMilestone({{ $sub->id }}, 'milestone')">
+                                     <i class="fa-solid fa-circle-plus text-success" style="width: 16px;"></i> Add Milestone
+                                 </a>
+                             </li>
+                             <li>
+                                 <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                    data-bs-toggle="modal" data-bs-target="#modalAddMilestone"
+                                    onclick="openAddMilestone({{ $sub->id }}, 'divider')">
+                                     <i class="fa-solid fa-grip-lines text-teal" style="width: 16px; color: #2dd4bf;"></i> Add Divider Section
+                                 </a>
+                             </li>
+                             @endif
+                            @if($userRole === 'administrator')
+                            <li class="dropdown-divider my-1 opacity-50"></li>
+                            <li>
+                                <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0)"
+                                   onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
+                                    <i class="fa-solid fa-trash-can" style="width: 16px;"></i> Delete Sub Program
+                                </a>
+                            </li>
+                            @endif
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -651,29 +742,30 @@
                     </div>
                 @else
                     {{-- REGULAR MILESTONE / KR RENDER --}}
-                <div class="card border-0 shadow-sm overflow-hidden milestone-card mb-3" data-name="{{ strtolower($ms->name) }}" data-id="{{ $ms->id }}">
-                    <div class="px-3 py-2 d-flex justify-content-between align-items-center" style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                <div class="card border-0 shadow-sm milestone-card mb-3" data-name="{{ strtolower($ms->name) }}" data-id="{{ $ms->id }}">
+                    <div class="px-3 py-2 d-flex flex-wrap flex-md-nowrap justify-content-between align-items-start align-items-md-center gap-2 rounded-top-2" style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
                         @if($userRole === 'administrator' || $userRole === 'manager')
-                        <div class="ms-drag-handle py-1 px-1 me-1" style="cursor: grab;">
+                        <div class="ms-drag-handle py-1 px-1 me-1 d-none d-md-block" style="cursor: grab;">
                             <i class="fa-solid fa-grip-vertical text-muted opacity-50"></i>
                         </div>
                         @endif
-                        <div class="d-flex align-items-center gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="false">
-                            <div class="rounded-2 d-flex align-items-center justify-content-center transition-transform icon-collapse"
-                                 style="width: 28px; height: 28px; background: {{ $ms->type === 'key_result' ? '#fee2e2' : '#dbeafe' }}; border: 1px solid {{ $ms->type === 'key_result' ? '#fecaca' : '#bfdbfe' }};" id="iconMs{{ $ms->id }}">
+                        <div class="d-flex align-items-start gap-2 flex-grow-1" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseMs{{ $ms->id }}" aria-expanded="false">
+                            <div class="rounded-2 d-flex align-items-center justify-content-center transition-transform icon-collapse mt-1"
+                                 style="min-width: 28px; min-height: 28px; background: {{ $ms->type === 'key_result' ? '#fee2e2' : '#dbeafe' }}; border: 1px solid {{ $ms->type === 'key_result' ? '#fecaca' : '#bfdbfe' }};" id="iconMs{{ $ms->id }}">
                                 <i class="fa-solid {{ $ms->type === 'key_result' ? 'fa-bullseye' : 'fa-chevron-down' }}" style="color: {{ $ms->type === 'key_result' ? '#dc2626' : '#3b82f6' }}; font-size: 0.7rem;"></i>
                             </div>
-                            <div>
+                            <div class="min-width-0">
                                 <p class="text-muted mb-0" style="font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;">{{ $ms->type === 'key_result' ? 'Key Result' : 'Milestone' }}</p>
-                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;"><span class="ms-num" data-type="{{ $ms->type }}">{{ $msNum }}</span> {{ $ms->name }}
+                                <h6 class="fw-semibold text-dark mb-0" style="font-size: 0.85rem; line-height: 1.4;">
+                                    <span class="ms-num" data-type="{{ $ms->type }}">{{ $msNum }}</span> {{ $ms->name }}
                                     @if($ms->bobot !== null)
-                                    <span class="ms-1 badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
-                                        <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.5rem;"></i>{{ $ms->bobot }}%
+                                    <span class="ms-1 badge rounded-pill fw-semibold d-inline-block d-md-none" style="background: #ede9fe; color: #6d28d9; font-size: 0.6rem; border: 1px solid #ddd6fe; vertical-align: middle;">
+                                        <i class="fa-solid fa-weight-hanging" style="font-size: 0.5rem;"></i> {{ $ms->bobot }}%
                                     </span>
                                     @endif
                                 </h6>
                                 @if($ms->description)
-                                    <div class="text-muted mt-1" style="font-size: 0.68rem;">{{ Str::limit($ms->description, 70) }}</div>
+                                    <div class="text-muted mt-1 d-none d-md-block" style="font-size: 0.68rem;">{{ Str::limit($ms->description, 70) }}</div>
                                 @endif
                                 @if($ms->start_date && $ms->end_date)
                                     <div class="text-muted mt-1 d-flex align-items-center gap-1" style="font-size: 0.68rem;">
@@ -683,62 +775,120 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            @if($ms->bobot !== null)
-                            <span class="badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.65rem; border: 1px solid #ddd6fe;">
-                                <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.55rem;"></i>Bobot {{ $ms->bobot }}%
-                            </span>
-                            @endif
-                            @if($msTotal > 0)
-                            <span class="badge rounded-pill fw-semibold" style="background: #dbeafe; color: #1d4ed8; font-size: 0.65rem; border: 1px solid #bfdbfe;">
-                                {{ $msAvg }}% avg
-                            </span>
-                            @endif
-                            {{-- Edit Milestone --}}
-                            @if($userRole === 'administrator' || $userRole === 'manager')
-                            <button type="button"
-                                    class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                    style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;"
-                                    data-bs-toggle="modal" data-bs-target="#modalEditMilestone"
-                                    onclick="openEditMilestone({{ $ms->id }}, {{ $ms->sub_program_id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}')">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <button type="button"
-                                    class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                    style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;"
-                                    title="Duplikat Milestone"
-                                    onclick="openDuplicateModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
-                                <i class="fa-solid fa-copy"></i>
-                            </button>
-                            @endif
-                            {{-- Attachments Milestone --}}
-                            <button type="button"
-                                    class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                    style="background: #fef3c7; border: 1px solid #fde68a; color: #92400e; font-size: 0.68rem;"
-                                    onclick="openAttachmentModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
-                                <i class="fa-solid fa-paperclip"></i>
-                                Lampiran
-                                @if($ms->attachments->count() > 0)
-                                <span class="badge rounded-pill" style="background: #f59e0b; color: white; font-size: 0.58rem;">{{ $ms->attachments->count() }}</span>
+                        <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                            {{-- Desktop View Badges & Actions --}}
+                            <div class="d-none d-md-flex align-items-center gap-2">
+                                @if($ms->bobot !== null)
+                                <span class="badge rounded-pill fw-semibold" style="background: #ede9fe; color: #6d28d9; font-size: 0.65rem; border: 1px solid #ddd6fe;">
+                                    <i class="fa-solid fa-weight-hanging me-1" style="font-size: 0.55rem;"></i>Bobot {{ $ms->bobot }}%
+                                </span>
                                 @endif
-                            </button>
-                            {{-- Add Activity --}}
-                            @if($userRole === 'administrator' || $userRole === 'manager')
-                            <button type="button"
-                                    class="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-2"
-                                    style="background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; font-size: 0.68rem;"
-                                    data-bs-toggle="modal" data-bs-target="#modalAddActivity"
-                                    onclick="setActivityMilestone({{ $ms->id }}, '{{ addslashes($ms->name) }}')">
-                                <i class="fa-solid fa-plus"></i> Activity
-                            </button>
-                            @endif
-                            {{-- Delete Milestone --}}
-                            @if($userRole === 'administrator')
-                            <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Milestone"
-                                    onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
-                                <i class="fa-solid fa-times"></i>
-                            </button>
-                            @endif
+                                @if($msTotal > 0)
+                                <span class="badge rounded-pill fw-semibold" style="background: #dbeafe; color: #1d4ed8; font-size: 0.65rem; border: 1px solid #bfdbfe;">
+                                    {{ $msAvg }}% avg
+                                </span>
+                                @endif
+                                
+                                @if($userRole === 'administrator' || $userRole === 'manager')
+                                <button type="button" class="btn btn-sm fw-semibold" style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;"
+                                        title="Edit Milestone"
+                                        data-bs-toggle="modal" data-bs-target="#modalEditMilestone"
+                                        onclick="openEditMilestone({{ $ms->id }}, {{ $ms->sub_program_id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}')">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm fw-semibold" style="background: #e0e7ff; border: 1px solid #c7d2fe; color: #4338ca; font-size: 0.68rem;" title="Duplikat Milestone"
+                                        data-bs-toggle="modal" data-bs-target="#modalDuplicate"
+                                        onclick="openDuplicateModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+                                @endif
+
+                                <button type="button" class="btn btn-sm fw-semibold" style="background: #fef3c7; border: 1px solid #fde68a; color: #92400e; font-size: 0.68rem;"
+                                        title="Lampiran"
+                                        data-bs-toggle="modal" data-bs-target="#modalAttachments"
+                                        onclick="openAttachmentModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                    @if($ms->attachments->count() > 0)
+                                    <span class="badge rounded-pill ms-1" style="background: #f59e0b; color: white; font-size: 0.58rem;">{{ $ms->attachments->count() }}</span>
+                                    @endif
+                                </button>
+
+                                @if($userRole === 'administrator' || $userRole === 'manager')
+                                <button type="button" class="btn btn-sm fw-semibold" style="background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; font-size: 0.68rem;"
+                                        data-bs-toggle="modal" data-bs-target="#modalAddActivity"
+                                        onclick="setActivityMilestone({{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                    <i class="fa-solid fa-plus me-1"></i> Activity
+                                </button>
+                                @endif
+
+                                @if($userRole === 'administrator')
+                                <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Milestone"
+                                        onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
+                                    <i class="fa-solid fa-times"></i>
+                                </button>
+                                @endif
+                            </div>
+
+                            {{-- Mobile View Action Dropdown --}}
+                            <div class="dropdown d-md-none">
+                                <div class="d-flex align-items-center gap-1">
+                                    @if($msTotal > 0)
+                                    <span class="badge rounded-pill fw-semibold" style="background: #dbeafe; color: #1d4ed8; font-size: 0.6rem; border: 1px solid #bfdbfe;">
+                                        {{ $msAvg }}%
+                                    </span>
+                                    @endif
+                                    <button class="btn btn-sm btn-light border-light-subtle shadow-none px-2" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" style="padding: 2px 8px;">
+                                        <i class="fa-solid fa-ellipsis-vertical text-muted" style="font-size: 0.75rem;"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="font-size: 0.8rem; border-radius: 12px; min-width: 180px;">
+                                        @if($userRole === 'administrator' || $userRole === 'manager')
+                                        <li>
+                                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                               data-bs-toggle="modal" data-bs-target="#modalEditMilestone"
+                                               onclick="openEditMilestone({{ $ms->id }}, {{ $ms->sub_program_id }}, '{{ addslashes($ms->name) }}', '{{ $ms->bobot ?? '' }}', '{{ addslashes($ms->description ?? '') }}', '{{ $ms->start_date ? $ms->start_date->format('Y-m-d') : '' }}', '{{ $ms->end_date ? $ms->end_date->format('Y-m-d') : '' }}')">
+                                                <i class="fa-solid fa-pen-to-square text-primary" style="width: 16px;"></i> Edit {{ $ms->type === 'key_result' ? 'KR' : 'Milestone' }}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                               data-bs-toggle="modal" data-bs-target="#modalDuplicate"
+                                               onclick="openDuplicateModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                                <i class="fa-solid fa-copy text-primary" style="width: 16px;"></i> Duplikat
+                                            </a>
+                                        </li>
+                                        <li class="dropdown-divider my-1 opacity-50"></li>
+                                        @endif
+                                        <li>
+                                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                               data-bs-toggle="modal" data-bs-target="#modalAttachments"
+                                               onclick="openAttachmentModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                                <i class="fa-solid fa-paperclip text-warning" style="width: 16px;"></i> Lampiran
+                                                @if($ms->attachments->count() > 0)
+                                                <span class="badge bg-warning text-dark ms-auto">{{ $ms->attachments->count() }}</span>
+                                                @endif
+                                            </a>
+                                        </li>
+                                        @if($userRole === 'administrator' || $userRole === 'manager')
+                                        <li>
+                                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2" href="javascript:void(0)"
+                                               data-bs-toggle="modal" data-bs-target="#modalAddActivity"
+                                               onclick="setActivityMilestone({{ $ms->id }}, '{{ addslashes($ms->name) }}')">
+                                                <i class="fa-solid fa-circle-plus text-success" style="width: 16px;"></i> Add Activity
+                                            </a>
+                                        </li>
+                                        @endif
+                                        @if($userRole === 'administrator')
+                                        <li class="dropdown-divider my-1 opacity-50"></li>
+                                        <li>
+                                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0)"
+                                               onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
+                                                <i class="fa-solid fa-trash-can" style="width: 16px;"></i> Delete {{ $ms->type === 'key_result' ? 'KR' : 'Milestone' }}
+                                            </a>
+                                        </li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1178,14 +1328,14 @@
                         </button>
                     @endif
                 </div>
-                <div class="card-body p-0" style="overflow: visible !important;">
-                    <div class="table-responsive" style="overflow: visible;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
                         <table class="table table-hover align-middle mb-5">
                             <thead class="bg-light bg-opacity-50">
                                 <tr>
                                     <th class="ps-4 border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">User</th>
                                     <th class="border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Role in Project</th>
-                                    <th class="border-0 text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Joined Date</th>
+                                    <th class="border-0 text-muted fw-semibold small text-uppercase d-none d-md-table-cell" style="font-size: 0.65rem;">Joined Date</th>
                                     <th class="pe-4 border-0 text-end text-muted fw-semibold small text-uppercase" style="font-size: 0.65rem;">Actions</th>
                                 </tr>
                             </thead>
@@ -1203,9 +1353,9 @@
                                                         </div>
                                                     @endif
                                                 </div>
-                                                <div>
-                                                    <div class="fw-bold text-dark mb-0" style="font-size: 0.85rem;">{{ $member->name }}</div>
-                                                    <div class="text-muted" style="font-size: 0.75rem;">{{ $member->email }}</div>
+                                                <div class="min-width-0">
+                                                    <div class="fw-bold text-dark mb-0 text-truncate" style="font-size: 0.85rem;" title="{{ $member->name }}">{{ $member->name }}</div>
+                                                    <div class="text-muted text-truncate" style="font-size: 0.75rem;" title="{{ $member->email }}">{{ $member->email }}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -1221,7 +1371,7 @@
                                                 {{ ucfirst($member->pivot->role) }}
                                             </span>
                                         </td>
-                                        <td class="text-muted small">
+                                        <td class="text-muted small d-none d-md-table-cell">
                                             {{ $member->pivot->created_at->format('M d, Y') }}
                                         </td>
                                         <td class="pe-4 text-end">

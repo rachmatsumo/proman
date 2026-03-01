@@ -4,13 +4,13 @@
 @section('header_title', 'Program List')
 
 @section('header_actions')
-    <div class="d-flex align-items-center gap-3">
-        <div class="position-relative d-none d-md-block" style="width: 250px;">
-            <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.9rem;"></i>
-            <input type="text" id="programSearch" class="form-control form-control-sm ps-5 bg-light border-0 shadow-none rounded-pill" placeholder="Search programs..." style="height: 38px; border: 1px solid #e2e8f0 !important;">
+    <div class="d-flex align-items-center gap-2 gap-md-3 flex-grow-1 justify-content-end">
+        <div class="position-relative flex-grow-1 flex-md-grow-0" style="max-width: 250px;">
+            <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.8rem;"></i>
+            <input type="text" id="programSearch" class="form-control form-control-sm ps-5 bg-light border-0 shadow-none rounded-pill" placeholder="Search..." style="height: 36px; border: 1px solid #e2e8f0 !important; font-size: 0.85rem;">
         </div>
-        <a href="{{ route('programs.create') }}" class="btn btn-primary shadow-sm fw-bold px-3 d-flex align-items-center" style="height: 38px; border-radius: 10px;">
-            <i class="fa-solid fa-plus me-2"></i> New Program
+        <a href="{{ route('programs.create') }}" class="btn btn-primary btn-sm shadow-sm fw-bold px-3 d-flex align-items-center flex-shrink-0" style="height: 36px; border-radius: 10px;">
+            <i class="fa-solid fa-plus me-md-2"></i> <span class="d-none d-md-inline">New Program</span>
         </a>
     </div>
 @endsection
@@ -32,7 +32,7 @@
                     <tr class="program-row border-bottom border-light">
                         <td class="px-4 py-4">
                             <div class="d-flex align-items-center">
-                                <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 44px; height: 44px;">
+                                <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="min-width: 44px; min-height: 44px;">
                                     <i class="fa-solid fa-folder text-primary fs-5"></i> 
                                 </div>
                                 <div class="overflow-hidden">

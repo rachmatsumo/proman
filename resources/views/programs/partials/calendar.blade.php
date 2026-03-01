@@ -11,16 +11,16 @@
         overflow: hidden;
         box-shadow: 0 2px 16px rgba(99,102,241,0.06);
     }
-    .fc .fc-toolbar-title { font-size: 1rem; font-weight: 700; color: #1e1b4b; }
-    .fc .fc-button-primary { background: #6366f1; border-color: #6366f1; }
-    .fc .fc-button-primary:hover { background: #4f46e5; border-color: #4f46e5; }
-    .fc .fc-button-primary:not(:disabled).fc-button-active,
-    .fc .fc-button-primary:not(:disabled):active { background: #4338ca; border-color: #4338ca; }
-    .fc .fc-today-button { text-transform: capitalize; }
-    .fc-daygrid-day.fc-day-today { background: #eef2ff !important; }
-    .fc-event { border-radius: 5px !important; font-size: 0.72rem; padding: 1px 4px; cursor: pointer; border: none !important; }
-    .fc-event-title { font-weight: 600; }
-    .fc-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.72rem; color: #64748b; }
+    @media (max-width: 767.98px) {
+        .fc .fc-toolbar-title { font-size: 0.9rem; }
+        .fc .fc-toolbar { flex-direction: column; gap: 10px; }
+        .fc .fc-toolbar-chunk { display: flex; justify-content: center; width: 100%; }
+        .fc-event { font-size: 0.65rem; padding: 2px 4px; }
+    }
+    .fc-event { border-radius: 6px !important; font-size: 0.72rem; padding: 2px 6px; cursor: pointer; border: none !important; margin-bottom: 1px !important; transition: transform 0.1s; }
+    .fc-event:hover { transform: scale(1.02); filter: brightness(0.95); }
+    .fc-event-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.72rem; color: #64748b; align-items: center; }
     .fc-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     /* Remove underlines on date numbers and day column headers */
     .fc .fc-daygrid-day-number,
@@ -38,14 +38,23 @@
             <p class="text-muted mb-0" style="font-size: 0.72rem;">Semua activity program ditampilkan per status</p>
         </div>
         {{-- Legend --}}
-        <div class="fc-legend">
-            <span><span class="fc-legend-dot" style="background:#059669;"></span>Done</span>
-            <span><span class="fc-legend-dot" style="background:#d97706;"></span>On Progress</span>
-            <span><span class="fc-legend-dot" style="background:#0ea5e9;"></span>To Do</span>
-            <span><span class="fc-legend-dot" style="background:#475569;"></span>On Hold</span>
-            <span><span class="fc-legend-dot" style="background:#be123c;"></span>Cancelled</span>
+        {{-- Legend --}}
+        <div class="fc-legend" id="calendarLegend">
+            <div class="d-flex align-items-center"><span class="fc-legend-dot" style="background:#059669;"></span>Done</div>
+            <div class="d-flex align-items-center"><span class="fc-legend-dot" style="background:#d97706;"></span>On Progress</div>
+            <div class="d-flex align-items-center"><span class="fc-legend-dot" style="background:#0ea5e9;"></span>To Do</div>
+            <div class="d-flex align-items-center"><span class="fc-legend-dot" style="background:#475569;"></span>On Hold</div>
+            <div class="d-flex align-items-center"><span class="fc-legend-dot" style="background:#be123c;"></span>Cancelled</div>
         </div>
     </div>
+
+    <style>
+        @media (max-width: 575.98px) {
+            .fc-legend { gap: 8px 12px; }
+            .fc-legend > div { font-size: 0.65rem; }
+            #fc-calendar-wrap { padding: 0.75rem !important; }
+        }
+    </style>
 
     {{-- Calendar --}}
     <div id="fc-calendar-wrap" class="p-3">
@@ -90,10 +99,16 @@
             'Cancelled':   '#be123c',
         };
 
+        var isMobile = window.innerWidth < 768;
         var cal = new FullCalendar.Calendar(calEl, {
-            initialView: 'dayGridMonth',
+            initialView: isMobile ? 'listWeek' : 'dayGridMonth',
             height: 'auto',
-            headerToolbar: {
+            dayMaxEvents: isMobile ? 2 : 3, // Very important: limits events per day
+            headerToolbar: isMobile ? {
+                left:   'prev,next',
+                center: 'title',
+                right:  'today,listWeek'
+            } : {
                 left:   'prev,next today',
                 center: 'title',
                 right:  'dayGridMonth,dayGridWeek,listWeek'

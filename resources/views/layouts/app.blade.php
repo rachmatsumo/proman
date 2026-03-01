@@ -24,7 +24,18 @@
             --slate-900: #0f172a;
             --slate-800: #1e293b;
         }
-        .sidebar { min-width: var(--sidebar-width); max-width: var(--sidebar-width); transition: all 0.3s ease; }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .sidebar { 
+            min-width: var(--sidebar-width); 
+            max-width: var(--sidebar-width); 
+            transition: transform 0.3s ease;
+            z-index: 1040;
+        }
+        
         .bg-dark-slate { background-color: var(--slate-900); }
         .text-slate-300 { color: #cbd5e1; }
         .text-slate-400 { color: #94a3b8; }
@@ -58,19 +69,48 @@
         .sidebar nav::-webkit-scrollbar { width: 4px; }
         .sidebar nav::-webkit-scrollbar-track { background: transparent; }
         .sidebar nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+        /* Mobile specific styles */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background-color: rgba(15, 23, 42, 0.7);
+                backdrop-filter: blur(4px);
+                z-index: 1030;
+            }
+        }
     </style>
 </head>
-<body class="bg-light d-flex vh-100 overflow-hidden text-dark" style="font-family: system-ui, -apple-system, sans-serif;">
+<body class="bg-light d-flex vh-100 overflow-hidden text-dark" x-data="{ sidebarOpen: false }">
+
+    <!-- Sidebar Overlay (mobile only) -->
+    <div class="sidebar-overlay d-lg-none" x-show="sidebarOpen" x-transition.opacity @click="sidebarOpen = false" style="display: none;"></div>
 
     <!-- Sidebar -->
-    <aside class="sidebar bg-dark-slate text-white d-flex flex-column h-100 shadow-lg z-3 border-end border-white border-opacity-10">
+    <aside class="sidebar bg-dark-slate text-white d-flex flex-column h-100 shadow-lg border-end border-white border-opacity-10"
+           :class="sidebarOpen ? 'show' : ''">
         <!-- Logo -->
-        <div class="d-flex align-items-center px-4" style="height: 72px;">
-            <div class="bg-primary bg-white rounded-3 d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 36px; height: 36px;">
-                <!-- <i class="fa-solid fa-layer-group text-white fs-5"></i> -->
-                 <img src="{{ asset('img/proman-logo.png') }}" alt="ProMan Logo" class="img-fluid">
+        <div class="d-flex align-items-center justify-content-between px-4" style="height: 72px;">
+            <div class="d-flex align-items-center">
+                <div class="bg-primary bg-white rounded-3 d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 36px; height: 36px;">
+                     <img src="{{ asset('img/proman-logo.png') }}" alt="ProMan Logo" class="img-fluid">
+                </div>
+                <span class="fs-4 fw-bold tracking-tight">ProMan</span>
             </div>
-            <span class="fs-4 fw-bold tracking-tight">ProMan</span>
+            <button class="btn btn-link text-white p-0 d-lg-none" @click="sidebarOpen = false">
+                <i class="fa-solid fa-xmark fs-4"></i>
+            </button>
         </div>
 
         <!-- Navigation -->
@@ -120,35 +160,21 @@
                 </a>
             </div>
         </nav>
-        
-        <!-- Bottom section -->
-        <!-- <div class="p-3 mt-auto">
-            <div class="user-profile bg-white bg-opacity-10 border border-white border-opacity-10 rounded-4 p-3 d-flex align-items-center">
-                <div class="avatar-wrapper position-relative">
-                    <div class="rounded-circle bg-primary bg-gradient d-flex align-items-center justify-content-center fw-bold text-white shadow-sm" style="width: 40px; height: 40px; font-size: 14px;">
-                        AR
-                    </div>
-                    <span class="position-absolute bottom-0 end-0 bg-success border border-2 border-slate-900 rounded-circle" style="width: 12px; height: 12px;"></span>
-                </div>
-                <div class="ms-3 overflow-hidden">
-                    <p class="mb-0 small fw-bold text-white text-truncate">Admin User</p>
-                    <p class="mb-0 text-slate-400 text-truncate" style="font-size: 0.7rem;">Project Lead</p>
-                </div>
-                <button class="ms-auto btn btn-link text-slate-400 p-0 hover-text-white">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </button>
-            </div>
-        </div> -->
     </aside>
 
     <!-- Main Content -->
     <div class="flex-grow-1 d-flex flex-column h-100 overflow-hidden">
         <!-- Top header -->
-        <header class="py-4 bg-white shadow-sm d-flex align-items-center justify-content-between px-4 border-bottom" style="height: 64px; z-index: 10;">
-            <h1 class="fs-5 fw-semibold text-dark mb-0 text-truncate">
-                @yield('header_title', 'Dashboard')
-            </h1>
-            <div class="d-flex align-items-center gap-3">
+        <header class="py-4 bg-white shadow-sm d-flex align-items-center justify-content-between px-3 px-md-4 border-bottom" style="height: 64px; z-index: 10;">
+            <div class="d-flex align-items-center gap-2 gap-md-3 overflow-hidden">
+                <button class="btn btn-light border-0 d-lg-none shadow-sm rounded-3" @click="sidebarOpen = true">
+                    <i class="fa-solid fa-bars fs-5"></i>
+                </button>
+                <h1 class="fs-5 fw-semibold text-dark mb-0 text-truncate">
+                    @yield('header_title', 'Dashboard')
+                </h1>
+            </div>
+            <div class="d-flex align-items-center gap-2 gap-md-3">
                 @yield('header_actions')
                 
                 @auth
