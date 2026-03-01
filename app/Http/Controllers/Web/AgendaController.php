@@ -12,11 +12,30 @@ class AgendaController extends Controller
 {
     public function index(Request $request)
     {
+        $view = $request->query('view', 'daily');
         $date = $request->query('date', Carbon::today()->format('Y-m-d'));
-        $agendas = Agenda::with('pics')->where('date', $date)->orderBy('start_time')->get();
+        $carbonDate = Carbon::parse($date);
         $users = User::orderBy('name')->get();
 
-        return view('agenda.index', compact('agendas', 'users', 'date'));
+        if ($view === 'weekly') {
+            $startOfWeek = $carbonDate->copy()->startOfWeek();
+            $endOfWeek = $carbonDate->copy()->endOfWeek();
+            
+            $agendas = Agenda::with('pics')
+                ->whereBetween('date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
+                ->orderBy('date')
+                ->orderBy('start_time')
+                ->get()
+                ->groupBy(function($item) {
+                    return \Carbon\Carbon::parse($item->date)->format('Y-m-d');
+                });
+
+            return view('agenda.index', compact('agendas', 'users', 'date', 'view', 'startOfWeek', 'endOfWeek'));
+        }
+
+        // Daily view (default)
+        $agendas = Agenda::with('pics')->where('date', $date)->orderBy('start_time')->get();
+        return view('agenda.index', compact('agendas', 'users', 'date', 'view'));
     }
 
     public function store(Request $request)

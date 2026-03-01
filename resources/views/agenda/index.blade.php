@@ -47,109 +47,163 @@
             </div>
         </div>
 
-        <!-- Timeline View -->
+        <!-- Timeline/Weekly View -->
         <div class="col-md-9 h-100 d-flex flex-column">
             <div class="card border-0 shadow-sm rounded-4 flex-grow-1 overflow-hidden d-flex flex-column">
                 <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="fw-bold mb-0">{{ \Carbon\Carbon::parse($date)->format('l, d F Y') }}</h5>
-                        <p class="small text-muted mb-0">Hourly Timeline</p>
+                        <h5 class="fw-bold mb-0">
+                            @if($view === 'weekly')
+                                Week: {{ $startOfWeek->format('d M') }} - {{ $endOfWeek->format('d M Y') }}
+                            @else
+                                {{ \Carbon\Carbon::parse($date)->format('l, d F Y') }}
+                            @endif
+                        </h5>
+                        <p class="small text-muted mb-0">{{ $view === 'weekly' ? 'Weekly Overview' : 'Hourly Timeline' }}</p>
                     </div>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" onclick="changeDate('{{ \Carbon\Carbon::parse($date)->subDay()->format('Y-m-d') }}')">
-                            <i class="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <button class="btn btn-outline-light text-dark border-light-subtle shadow-none px-3" onclick="changeDate('{{ \Carbon\Carbon::today()->format('Y-m-d') }}')">Today</button>
-                        <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" onclick="changeDate('{{ \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d') }}')">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </button>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="btn-group btn-group-sm p-1 bg-light rounded-pill">
+                            <button class="btn {{ $view === 'daily' ? 'btn-white shadow-sm' : 'btn-light border-0' }} rounded-pill px-3 fw-bold" 
+                                    onclick="switchView('daily')" style="font-size: 0.7rem;">Daily</button>
+                            <button class="btn {{ $view === 'weekly' ? 'btn-white shadow-sm' : 'btn-light border-0' }} rounded-pill px-3 fw-bold" 
+                                    onclick="switchView('weekly')" style="font-size: 0.7rem;">Weekly</button>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" 
+                                    onclick="changeDate('{{ $view === 'weekly' ? $startOfWeek->copy()->subWeek()->format('Y-m-d') : \Carbon\Carbon::parse($date)->subDay()->format('Y-m-d') }}')">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button class="btn btn-outline-light text-dark border-light-subtle shadow-none px-3" onclick="changeDate('{{ \Carbon\Carbon::today()->format('Y-m-d') }}')">Today</button>
+                            <button class="btn btn-outline-light text-dark border-light-subtle shadow-none" 
+                                    onclick="changeDate('{{ $view === 'weekly' ? $startOfWeek->copy()->addWeek()->format('Y-m-d') : \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d') }}')">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="card-body p-0 overflow-auto position-relative" id="timeline-container" style="background: #fdfdfd;">
-                    <!-- Hourly Grid -->
-                    @php
-                        $hourStart = 7;
-                        $hourEnd = 19;
-                    @endphp
-                    <div class="timeline-grid position-relative" style="min-height: {{ ($hourEnd - $hourStart + 1) * 60 }}px;">
-                        @for($i = $hourStart; $i <= $hourEnd; $i++)
-                            @php $time = sprintf('%02d:00', $i); @endphp
-                            <div class="hour-row d-flex align-items-start border-bottom position-relative" style="height: 60px;">
-                                <div class="hour-label text-muted small fw-bold px-4 py-2" style="width: 100px; font-size: 0.75rem;">
-                                    {{ $time }}
-                                </div>
-                                <div class="hour-lane flex-grow-1 h-100 position-relative"></div>
-                            </div>
-                        @endfor
-
-                        <!-- Agenda Items -->
-                        <div class="agenda-overlay position-absolute top-0 start-0 w-100 h-100" style="padding-left: 100px; pointer-events: none;">
-                            @php
-                                $processed = [];
-                                $offsetMinutes = $hourStart * 60;
-                            @endphp
-                            @foreach($agendas as $agenda)
+                    @if($view === 'weekly')
+                        <!-- Weekly Grid View -->
+                        <div class="weekly-grid d-flex h-100" style="min-width: 1000px;">
+                            @for($i = 0; $i < 7; $i++)
                                 @php
-                                    $start = \Carbon\Carbon::parse($agenda->start_time);
-                                    $end = $agenda->end_time ? \Carbon\Carbon::parse($agenda->end_time) : $start->copy()->addHour();
-                                    
-                                    $startMins = ($start->hour * 60) + $start->minute;
-                                    $endMins = ($end->hour * 60) + $end->minute;
-
-                                    // Calc lane for overlapping
-                                    $lane = 0;
-                                    foreach ($processed as $p) {
-                                        if ($startMins < $p['end'] && $endMins > $p['start']) {
-                                            $lane++;
-                                        }
-                                    }
-                                    $processed[] = ['start' => $startMins, 'end' => $endMins];
-
-                                    $top = $startMins - $offsetMinutes;
-                                    $height = max(40, $endMins - $startMins);
-                                    $left = 20 + ($lane * 40); // Shift 40px right per overlap
-                                    $width = max(30, 80 - ($lane * 10)); // Narrow slightly
-                                    
-                                    // Skip if totally outside the visible range
-                                    if ($endMins < $offsetMinutes || $startMins > ($hourEnd + 1) * 60) {
-                                        continue;
-                                    }
+                                    $current = $startOfWeek->copy()->addDays($i);
+                                    $dateStr = $current->format('Y-m-d');
+                                    $isToday = $current->isToday();
+                                    $dayAgendas = $agendas[$dateStr] ?? collect();
                                 @endphp
-                                <div class="agenda-card position-absolute rounded-3 border-start border-4 shadow-sm p-3 transition-all {{ $agenda->status }}" 
-                                     style="top: {{ $top }}px; height: {{ $height }}px; left: {{ $left }}px; width: {{ $width }}%; z-index: {{ 10 + $lane }}; cursor: pointer; pointer-events: auto; opacity: 0.95;"
-                                     onclick="openEditModal({{ json_encode($agenda) }})">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="fw-bold small text-truncate">{{ $agenda->title }}</div>
-                                        <div class="small opacity-75" style="font-size: 0.7rem;">
-                                            <i class="fa-regular fa-clock me-1"></i>{{ $start->format('H:i') }} - {{ $end->format('H:i') }}
+                                <div class="weekly-day-col flex-grow-1 border-end d-flex flex-column {{ $isToday ? 'bg-primary-subtle bg-opacity-10' : '' }}" style="min-width: 142px;">
+                                    <div class="day-header p-3 text-center border-bottom {{ $isToday ? 'bg-primary text-white' : 'bg-light' }}">
+                                        <div class="small fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.05em;">{{ $current->format('D') }}</div>
+                                        <div class="h5 mb-0 fw-black">{{ $current->format('d') }}</div>
+                                    </div>
+                                    <div class="day-content p-2 flex-grow-1 overflow-auto" style="background: repeating-linear-gradient(rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 40px);">
+                                        @foreach($dayAgendas as $agenda)
+                                            <div class="agenda-item-sm p-2 mb-2 rounded-3 border-start border-3 shadow-sm transition-all {{ $agenda->status }}" 
+                                                 style="background: white; cursor: pointer; font-size: 0.72rem;"
+                                                 onclick="openEditModal({{ json_encode($agenda) }})">
+                                                <div class="fw-bold text-truncate mb-1">{{ $agenda->title }}</div>
+                                                <div class="d-flex justify-content-between align-items-center opacity-75" style="font-size: 0.65rem;">
+                                                    <span>{{ \Carbon\Carbon::parse($agenda->start_time)->format('H:i') }}</span>
+                                                    <span class="badge {{ $agenda->status === 'Done' ? 'bg-success' : ($agenda->status === 'Cancelled' ? 'bg-danger' : 'bg-primary') }} rounded-pill" style="font-size: 0.5rem; padding: 0.2em 0.5em;">{{ $agenda->status }}</span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                        <div class="text-center mt-2">
+                                            <button class="btn btn-outline-primary btn-sm rounded-circle p-0" style="width: 24px; height: 24px; font-size: 0.7rem;" onclick="openCreateModalAt('{{ $dateStr }}')">
+                                                <i class="fa-solid fa-plus"></i>
+                                            </button>
                                         </div>
                                     </div>
-                                    @if($height > 50)
-                                        <div class="small opacity-75 text-truncate mb-1" style="font-size: 0.7rem;">
-                                            @if($agenda->location)
-                                                <i class="fa-solid fa-location-dot me-1"></i>{{ $agenda->location }}
-                                            @endif
-                                            @if($agenda->uic)
-                                                <i class="fa-solid fa-building ms-2 me-1"></i>{{ $agenda->uic }}
-                                            @endif
-                                            @if(!$agenda->location && !$agenda->uic)
-                                                <i class="fa-solid fa-circle-info me-1"></i>No details
-                                            @endif
-                                        </div>
-                                        <div class="d-flex align-items-center gap-1 overflow-hidden">
-                                            @foreach($agenda->pics as $pic)
-                                                <div class="rounded-circle bg-white border d-flex align-items-center justify-content-center fw-bold" 
-                                                     style="width: 18px; height: 18px; font-size: 8px;" title="{{ $pic->name }}">
-                                                    {{ substr($pic->name, 0, 1) }}
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
                                 </div>
-                            @endforeach
+                            @endfor
                         </div>
-                    </div>
+                    @else
+                        <!-- Hourly Grid View (Original) -->
+                        @php
+                            $hourStart = 7;
+                            $hourEnd = 19;
+                        @endphp
+                        <div class="timeline-grid position-relative" style="min-height: {{ ($hourEnd - $hourStart + 1) * 60 }}px;">
+                            @for($i = $hourStart; $i <= $hourEnd; $i++)
+                                @php $time = sprintf('%02d:00', $i); @endphp
+                                <div class="hour-row d-flex align-items-start border-bottom position-relative" style="height: 60px;">
+                                    <div class="hour-label text-muted small fw-bold px-4 py-2" style="width: 100px; font-size: 0.75rem;">
+                                        {{ $time }}
+                                    </div>
+                                    <div class="hour-lane flex-grow-1 h-100 position-relative"></div>
+                                </div>
+                            @endfor
+
+                            <!-- Agenda Items -->
+                            <div class="agenda-overlay position-absolute top-0 start-0 w-100 h-100" style="padding-left: 100px; pointer-events: none;">
+                                @php
+                                    $processed = [];
+                                    $offsetMinutes = $hourStart * 60;
+                                @endphp
+                                @foreach($agendas as $agenda)
+                                    @php
+                                        $start = \Carbon\Carbon::parse($agenda->start_time);
+                                        $end = $agenda->end_time ? \Carbon\Carbon::parse($agenda->end_time) : $start->copy()->addHour();
+                                        
+                                        $startMins = ($start->hour * 60) + $start->minute;
+                                        $endMins = ($end->hour * 60) + $end->minute;
+
+                                        // Calc lane for overlapping
+                                        $lane = 0;
+                                        foreach ($processed as $p) {
+                                            if ($startMins < $p['end'] && $endMins > $p['start']) {
+                                                $lane++;
+                                            }
+                                        }
+                                        $processed[] = ['start' => $startMins, 'end' => $endMins];
+
+                                        $top = $startMins - $offsetMinutes;
+                                        $height = max(40, $endMins - $startMins);
+                                        $left = 20 + ($lane * 40); // Shift 40px right per overlap
+                                        $width = max(30, 80 - ($lane * 10)); // Narrow slightly
+                                        
+                                        // Skip if totally outside the visible range
+                                        if ($endMins < $offsetMinutes || $startMins > ($hourEnd + 1) * 60) {
+                                            continue;
+                                        }
+                                    @endphp
+                                    <div class="agenda-card position-absolute rounded-3 border-start border-4 shadow-sm p-3 transition-all {{ $agenda->status }}" 
+                                         style="top: {{ $top }}px; height: {{ $height }}px; left: {{ $left }}px; width: {{ $width }}%; z-index: {{ 10 + $lane }}; cursor: pointer; pointer-events: auto; opacity: 0.95;"
+                                         onclick="openEditModal({{ json_encode($agenda) }})">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="fw-bold small text-truncate">{{ $agenda->title }}</div>
+                                            <div class="small opacity-75" style="font-size: 0.7rem;">
+                                                <i class="fa-regular fa-clock me-1"></i>{{ $start->format('H:i') }} - {{ $end->format('H:i') }}
+                                            </div>
+                                        </div>
+                                        @if($height > 50)
+                                            <div class="small opacity-75 text-truncate mb-1" style="font-size: 0.7rem;">
+                                                @if($agenda->location)
+                                                    <i class="fa-solid fa-location-dot me-1"></i>{{ $agenda->location }}
+                                                @endif
+                                                @if($agenda->uic)
+                                                    <i class="fa-solid fa-building ms-2 me-1"></i>{{ $agenda->uic }}
+                                                @endif
+                                                @if(!$agenda->location && !$agenda->uic)
+                                                    <i class="fa-solid fa-circle-info me-1"></i>No details
+                                                @endif
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 overflow-hidden">
+                                                @foreach($agenda->pics as $pic)
+                                                    <div class="rounded-circle bg-white border d-flex align-items-center justify-content-center fw-bold" 
+                                                         style="width: 18px; height: 18px; font-size: 8px;" title="{{ $pic->name }}">
+                                                        {{ substr($pic->name, 0, 1) }}
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -284,13 +338,20 @@
     }
 
     function changeDate(date) {
-        window.location.href = `{{ route('agendas.index') }}?date=${date}`;
+        const view = '{{ $view }}';
+        window.location.href = `{{ route('agendas.index') }}?date=${date}&view=${view}`;
+    }
+
+    function switchView(view) {
+        const date = '{{ $date }}';
+        window.location.href = `{{ route('agendas.index') }}?date=${date}&view=${view}`;
     }
 
     function openCreateModal() {
         document.getElementById('modal-title').innerText = 'Create New Agenda';
         document.getElementById('form-method').value = 'POST';
         document.getElementById('agenda-id').value = '';
+        document.getElementById('agenda-date').value = '{{ $date }}';
         document.getElementById('delete-btn').style.display = 'none';
         
         var form = document.getElementById('agendaForm');
@@ -302,10 +363,16 @@
         getAgendaModal().show();
     }
 
+    function openCreateModalAt(date) {
+        openCreateModal();
+        document.getElementById('agenda-date').value = date;
+    }
+
     function openEditModal(agenda) {
         document.getElementById('modal-title').innerText = 'Edit Agenda';
         document.getElementById('form-method').value = 'PUT';
         document.getElementById('agenda-id').value = agenda.id;
+        document.getElementById('agenda-date').value = agenda.date;
         document.getElementById('delete-btn').style.display = 'block';
         
         document.getElementById('form-title').value = agenda.title;
@@ -413,14 +480,49 @@
 
     // Scroll to current hour on load
     window.onload = function() {
-        const now = new Date();
-        const hour = now.getHours();
-        const container = document.getElementById('timeline-container');
-        if (container) {
-            // Adjust scroll based on 07:00 start (if hour is < 7, scroll to 0)
-            const scrollHour = Math.max(0, hour - 7);
-            container.scrollTop = Math.max(0, scrollHour * 60 - 50);
+        const view = '{{ $view }}';
+        if (view === 'daily') {
+            const now = new Date();
+            const hour = now.getHours();
+            const container = document.getElementById('timeline-container');
+            if (container) {
+                // Adjust scroll based on 07:00 start (if hour is < 7, scroll to 0)
+                const scrollHour = Math.max(0, hour - 7);
+                container.scrollTop = Math.max(0, scrollHour * 60 - 50);
+            }
         }
     }
 </script>
+
+<style>
+    .weekly-grid {
+        background: #fdfdfd;
+        overflow-x: auto;
+    }
+    .weekly-day-col {
+        min-height: 400px;
+        transition: background-color 0.2s;
+    }
+    .weekly-day-col:hover {
+        background-color: rgba(67, 56, 202, 0.02);
+    }
+    .day-header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+    .agenda-item-sm {
+        transition: transform 0.1s;
+    }
+    .agenda-item-sm:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
+    }
+    .agenda-item-sm.Pending { border-left-color: #4338ca !important; }
+    .agenda-item-sm.Done { border-left-color: #10b981 !important; opacity: 0.8; }
+    .agenda-item-sm.Cancelled { border-left-color: #ef4444 !important; opacity: 0.6; text-decoration: line-through; }
+    
+    .fw-black { font-weight: 900; }
+    .btn-white { background-color: white !important; }
+</style>
 @endsection
