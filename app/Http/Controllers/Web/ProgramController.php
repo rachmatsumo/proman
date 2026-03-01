@@ -276,7 +276,7 @@ class ProgramController extends Controller
             'subPrograms.milestones.activities.subActivities',
         ])->findOrFail($id);
 
-        $filename = 'Program_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $program->name) . '_' . now()->format('Ymd') . '.xlsx';
+        $filename = 'Program_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $program->name) . '_' . now()->format('YmdHis') . '.xlsx';
 
         return Excel::download(new ProgramExport($program), $filename);
     }
@@ -349,7 +349,7 @@ class ProgramController extends Controller
         // Set paper to F4/Legal (approx 8.5 x 13/14 in) in landscape
         $pdf->setPaper('legal', 'landscape');
 
-        $filename = 'Program_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $program->name) . '_' . now()->format('Ymd') . '.pdf';
+        $filename = 'Program_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $program->name) . '_' . now()->format('YmdHis') . '.pdf';
         return $pdf->download($filename);
     }
 

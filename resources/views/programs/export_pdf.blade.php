@@ -310,7 +310,7 @@
                         <th rowspan="2" class="col-date week-header">Selesai</th>
                         <th rowspan="2" class="col-status week-header">Status</th>
                         @foreach($timelineMeta as $m)
-                            <th colspan="4" class="month-header">{{ $m['month'] }}</th>
+                            <th colspan="4" class="month-header">{{ substr($m['month'], 0, 3) }}</th>
                         @endforeach
                     </tr>
                     <tr>
