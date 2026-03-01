@@ -145,7 +145,7 @@
     <div class="flex-grow-1 d-flex flex-column h-100 overflow-hidden">
         <!-- Top header -->
         <header class="py-4 bg-white shadow-sm d-flex align-items-center justify-content-between px-4 border-bottom" style="height: 64px; z-index: 10;">
-            <h1 class="fs-5 fw-semibold text-dark mb-0">
+            <h1 class="fs-5 fw-semibold text-dark mb-0 text-truncate">
                 @yield('header_title', 'Dashboard')
             </h1>
             <div class="d-flex align-items-center gap-3">

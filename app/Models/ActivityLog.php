@@ -9,6 +9,7 @@ class ActivityLog extends Model
     protected $fillable = [
         'loggable_type',
         'loggable_id',
+        'user_id',
         'action',
         'description',
         'old_data',
@@ -26,6 +27,11 @@ class ActivityLog extends Model
     public function loggable()
     {
         return $this->morphTo();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

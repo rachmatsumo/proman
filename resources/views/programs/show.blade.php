@@ -1,18 +1,32 @@
 @extends('layouts.app')
 
 @section('title', 'Program Detail - ProMan')
-@section('header_title', 'Program Detail: ' . $program->name)
+@section('header_title', $program->name)
 
 @section('header_actions')
     <div class="d-flex gap-2">
-        <!-- <a href="{{ route('projects.gantt', ['program_id' => $program->id]) }}" class="btn btn-outline-primary btn-sm shadow-sm fw-medium px-3 d-flex align-items-center">
-            <i class="fa-solid fa-chart-gantt me-2"></i> Timeline Chart
-        </a>
-        <a href="{{ route('projects.calendar', ['program_id' => $program->id]) }}" class="btn btn-outline-primary btn-sm shadow-sm fw-medium px-3 d-flex align-items-center">
-            <i class="fa-regular fa-calendar-days me-2"></i> Calendar
-        </a> -->
+        <!-- Export Excel -->
+        <div class="dropdown">
+            <button class="btn btn-success btn-sm shadow-sm fw-medium px-3 d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-file-export me-2"></i> Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('programs.export-excel', $program->id) }}">
+                        <i class="fa-solid fa-file-excel text-success me-2" style="width: 20px;"></i> 
+                        <span>Excel Export</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('programs.export-pdf', $program->id) }}">
+                        <i class="fa-solid fa-file-pdf text-danger me-2" style="width: 20px;"></i> 
+                        <span>PDF Export</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
         <a href="{{ route('programs.index') }}" class="btn btn-outline-secondary btn-sm shadow-sm fw-medium px-3 d-flex align-items-center">
-            <i class="fa-solid fa-arrow-left me-2"></i> Back to List
+            <i class="fa-solid fa-arrow-left me-2"></i> Back
         </a>
     </div>
 @endsection
@@ -226,18 +240,58 @@
 
     {{-- ===== SYSTEM STATUS CHIPS ===== --}}
     @php
-        // Group all activities by system status with hierarchy info
-        $activitiesByStatus = ['Upcoming' => [], 'Active' => [], 'Delayed' => [], 'Completed' => []];
-        foreach($program->subPrograms as $sub) {
+        $statusSummary = [
+            'Upcoming'  => ['count' => 0, 'groups' => []],
+            'Active'    => ['count' => 0, 'groups' => []],
+            'Delayed'   => ['count' => 0, 'groups' => []],
+            'Completed' => ['count' => 0, 'groups' => []],
+        ];
+
+        $programPrefix = $program->prefix ? $program->prefix . '.' : '1.';
+
+        foreach($program->subPrograms as $subIdx => $sub) {
+            $subNum = $programPrefix . ($subIdx + 1);
+            
+            $mGroup = 1;
+            $mCounter = 0;
+            
             foreach($sub->milestones as $ms) {
-                foreach($ms->activities as $act) {
+                if ($ms->type === 'divider') {
+                    $mGroup++;
+                    $mCounter = 0;
+                    continue;
+                }
+                
+                $mCounter++;
+                $msNum = 'M.' . $mGroup . '.' . $mCounter;
+                $actPrefix = $mGroup . '.' . $mCounter;
+
+                foreach($ms->activities as $actIdx => $act) {
                     $sys = $act->system_status;
-                    if(isset($activitiesByStatus[$sys])) {
-                        $activitiesByStatus[$sys][] = [
-                            'sub'  => $sub->name,
-                            'ms'   => $ms->name,
-                            'act'  => $act->name,
-                            'pct'  => $act->progress,
+                    if(isset($statusSummary[$sys])) {
+                        $statusSummary[$sys]['count']++;
+                        $subName = $sub->name;
+                        $msName  = $ms->name;
+
+                        $actNum = $actPrefix . '.' . ($actIdx + 1);
+
+                        if(!isset($statusSummary[$sys]['groups'][$subName])) {
+                            $statusSummary[$sys]['groups'][$subName] = [
+                                'num' => $subNum,
+                                'milestones' => []
+                            ];
+                        }
+                        if(!isset($statusSummary[$sys]['groups'][$subName]['milestones'][$msName])) {
+                            $statusSummary[$sys]['groups'][$subName]['milestones'][$msName] = [
+                                'num' => $msNum,
+                                'activities' => []
+                            ];
+                        }
+
+                        $statusSummary[$sys]['groups'][$subName]['milestones'][$msName]['activities'][] = [
+                            'num'  => $actNum,
+                            'name' => $act->name,
+                            'pct'  => $act->progress
                         ];
                     }
                 }
@@ -257,29 +311,56 @@
 
         @foreach($chipConfig as $label => $c)
         @php
-            $statusActs   = $activitiesByStatus[$label];
-            $chipId       = 'chip-' . strtolower($label);
+            $summary   = $statusSummary[$label];
+            $chipId    = 'chip-' . strtolower($label);
         @endphp
         <div id="{{ $chipId }}"
              class="d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 fw-semibold border chip-status"
              style="font-size: 0.72rem; color: {{ $c['color'] }}; background: {{ $c['bg'] }}; border-color: {{ $c['color'] }}33 !important; cursor: pointer;">
             <i class="fa-solid {{ $c['icon'] }}"></i>
             <span>{{ $label }}</span>
-            <span class="fw-black ms-1 px-1 rounded-pill" style="background: {{ $c['color'] }}18;">{{ count($statusActs) }}</span>
+            <span class="fw-black ms-1 px-1 rounded-pill" style="background: {{ $c['color'] }}18;">{{ $summary['count'] }}</span>
         </div>
         {{-- hidden popover content for this chip --}}
         <div id="{{ $chipId }}-content" class="d-none">
-            @if(count($statusActs) === 0)
-                <div class="text-muted fst-italic" style="font-size:0.78rem;">Tidak ada aktivitas dengan status ini.</div>
+            @if($summary['count'] === 0)
+                <div class="text-muted fst-italic p-3" style="font-size:0.75rem;">Tidak ada aktivitas dengan status ini.</div>
             @else
-                <ol class="mb-0 ps-3" style="font-size:0.76rem; max-height:220px; overflow-y:auto;">
-                    @foreach($statusActs as $item)
-                        <li class="mb-1">
-                            <span class="text-muted" style="font-size:0.68rem;">{{ $item['sub'] }} › {{ $item['ms'] }}</span><br>
-                            <strong>{{ $item['act'] }}</strong> <span class="text-muted">({{ $item['pct'] }}%)</span>
-                        </li>
+                <div class="popover-scroll-container" style="max-height:350px; width:300px; overflow-y:auto; overflow-x:hidden;">
+                    @foreach($summary['groups'] as $subName => $subGroup)
+                        <div class="sub-group mb-0">
+                            <div class="bg-light border-bottom px-3 py-2 d-flex justify-content-between align-items-center sticky-top" style="z-index: 10;">
+                                <div class="text-uppercase fw-bold text-primary text-truncate me-2" style="font-size:0.65rem; letter-spacing:0.02em;">
+                                    {{ $subName }}
+                                </div>
+                                <span class="badge rounded-pill bg-white text-primary border border-primary-subtle font-monospace" style="font-size: 0.6rem;">{{ $subGroup['num'] }}</span>
+                            </div>
+                            
+                            <div class="px-3 py-2">
+                                @foreach($subGroup['milestones'] as $msName => $msGroup)
+                                    <div class="ms-group mb-3">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <span class="badge bg-secondary-subtle text-secondary border-0 px-1 font-monospace" style="font-size: 0.58rem; min-width: 35px; text-align: center;">{{ $msGroup['num'] }}</span>
+                                            <div class="fw-bold text-dark" style="font-size:0.7rem; line-height: 1.2;">{{ $msName }}</div>
+                                        </div>
+                                        
+                                        <div class="act-list ms-1">
+                                            @foreach($msGroup['activities'] as $act)
+                                                <div class="d-flex align-items-start gap-2 mb-2" style="font-size:0.72rem; line-height: 1.4;">
+                                                    <span class="text-muted font-monospace opacity-75" style="font-size:0.6rem; min-width: 38px; padding-top: 1px;">{{ $act['num'] }}</span>
+                                                    <div class="flex-grow-1">
+                                                        <span class="text-secondary">{{ $act['name'] }}</span>
+                                                        <span class="badge text-bg-light border border-light-subtle ms-1 fw-normal" style="font-size: 0.6rem;">{{ $act['pct'] }}%</span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
                     @endforeach
-                </ol>
+                </div>
             @endif
         </div>
         @endforeach
@@ -331,6 +412,15 @@
         
         .icon-collapse { transition: transform 0.3s ease; }
         [aria-expanded="false"] .icon-collapse { transform: rotate(-90deg); }
+
+        /* Status Popover Styles */
+        .status-popover { max-width: 330px !important; border: 0 !important; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05) !important; }
+        .status-popover .popover-header { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #1e293b; padding: 12px 16px; font-size: 0.85rem; }
+        .status-popover .popover-body { padding: 0 !important; }
+        .status-popover .popover-scroll-container::-webkit-scrollbar { width: 6px; }
+        .status-popover .popover-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; }
+        .status-popover .popover-scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .status-popover .popover-scroll-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 
     <div class="tab-content" id="programTabsContent">
@@ -703,11 +793,24 @@
                                         </div>
                                     </td>
                                     <td class="px-3 py-2 text-center" style="font-size: 0.68rem; color: #64748b;">
-                                        <div class="d-flex flex-column align-items-center">
-                                            <span>{{ $act->start_date ? $act->start_date->format('d M y') : '-' }}</span>
-                                            <i class="fa-solid fa-arrow-down opacity-30" style="font-size: 0.55rem;"></i>
-                                            <span>{{ $act->end_date ? $act->end_date->format('d M y') : '-' }}</span>
-                                        </div>
+                                        <span class="inline-date-range d-inline-flex align-items-center gap-1"
+                                              id="act-date-{{ $act->id }}"
+                                              data-id="{{ $act->id }}"
+                                              data-type="activity"
+                                              data-start="{{ $act->start_date ? $act->start_date->format('Y-m-d') : '' }}"
+                                              data-end="{{ $act->end_date ? $act->end_date->format('Y-m-d') : '' }}"
+                                              title="Klik untuk ubah tanggal"
+                                              style="cursor: pointer; padding: 3px 7px; border-radius: 6px; border: 1px dashed #cbd5e1; transition: background 0.15s; white-space: nowrap;"
+                                              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.6rem; color: #94a3b8;"></i>
+                                            <span class="act-date-display">
+                                                @if($act->start_date && $act->end_date)
+                                                    {{ $act->start_date->format('d M y') }} → {{ $act->end_date->format('d M y') }}
+                                                @else
+                                                    <span class="text-muted fst-italic">Set tanggal</span>
+                                                @endif
+                                            </span>
+                                        </span>
                                     </td>
                                     <td class="px-3 py-2">
                                         <div class="d-flex align-items-center gap-2">
@@ -809,7 +912,24 @@
                                                                         </div>
                                                                     </td>
                                                                     <td class="text-center text-muted" style="width: 20%;">
-                                                                        {{ $subAct->start_date ? $subAct->start_date->format('d M y') : '-' }} <i class="fa-solid fa-arrow-right mx-1 opacity-50" style="font-size:0.6rem;"></i> {{ $subAct->end_date ? $subAct->end_date->format('d M y') : '-' }}
+                                                                        <span class="inline-date-range d-inline-flex align-items-center gap-1"
+                                                                              id="subact-date-{{ $subAct->id }}"
+                                                                              data-id="{{ $subAct->id }}"
+                                                                              data-type="sub_activity"
+                                                                              data-start="{{ $subAct->start_date ? $subAct->start_date->format('Y-m-d') : '' }}"
+                                                                              data-end="{{ $subAct->end_date ? $subAct->end_date->format('Y-m-d') : '' }}"
+                                                                              title="Klik untuk ubah tanggal"
+                                                                              style="cursor: pointer; padding: 2px 6px; border-radius: 6px; border: 1px dashed #cbd5e1; transition: background 0.15s; font-size: 0.65rem; white-space: nowrap;"
+                                                                              onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                                                            <i class="fa-regular fa-calendar me-1" style="font-size: 0.58rem; color: #94a3b8;"></i>
+                                                                            <span class="subact-date-display">
+                                                                                @if($subAct->start_date && $subAct->end_date)
+                                                                                    {{ $subAct->start_date->format('d M y') }} → {{ $subAct->end_date->format('d M y') }}
+                                                                                @else
+                                                                                    <span class="text-muted fst-italic">Set tanggal</span>
+                                                                                @endif
+                                                                            </span>
+                                                                        </span>
                                                                     </td>
                                                                     <td class="text-center" style="width: 15%;">
                                                                         <div class="d-flex align-items-center gap-2 justify-content-center">
@@ -1020,83 +1140,35 @@
 
         {{-- TAB 3: RIWAYAT --}}
         <div class="tab-pane fade" id="riwayat" role="tabpanel" aria-labelledby="riwayat-tab">
-            <div class="bg-white rounded-5 shadow-sm p-4 p-md-5 border-0">
-                <h5 class="fw-bold mb-4 text-dark fs-5"><i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i>Activity Log</h5>
-                
-                @if($activityLogs->isEmpty())
-                    <div class="text-center py-5">
-                        <i class="fa-solid fa-wind text-muted opacity-25 mb-3" style="font-size: 3rem;"></i>
-                        <p class="text-muted">Belum ada riwayat aktivitas yang tercatat.</p>
-                    </div>
-                @else
-                    <div class="position-relative ms-2 ms-md-4">
-                        {{-- Vertical Line --}}
-                        <div class="position-absolute top-0 bottom-0" style="left: 15px; width: 2px; background: #e2e8f0; transform: translateX(-50%);"></div>
-
-                        <div class="d-flex flex-column gap-4">
-                            @foreach($activityLogs as $log)
-                                @php 
-                                    $color = $log->action_color; 
-                                    $changed = $log->changed_fields;
-                                @endphp
-                                <div class="position-relative ps-5">
-                                    {{-- Timeline node --}}
-                                    <div class="position-absolute rounded-circle d-flex align-items-center justify-content-center shadow-sm"
-                                         style="left: 15px; top: 0; width: 32px; height: 32px; background: {{ $color['bg'] }}; color: {{ $color['color'] }}; border: 2px solid white; transform: translateX(-50%); z-index: 1;">
-                                        <i class="fa-solid {{ $color['icon'] }}" style="font-size: 0.8rem;"></i>
-                                    </div>
-                                    
-                                    {{-- Content --}}
-                                    <div class="card border-0 shadow-sm rounded-4" style="background: #f8fafc; border: 1px solid #f1f5f9 !important;">
-                                        <div class="card-body p-3 p-md-4">
-                                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-                                                <div>
-                                                    <span class="badge rounded-pill fw-semibold mb-2" style="background: {{ $color['bg'] }}; color: {{ $color['color'] }}; font-size: 0.65rem; border: 1px solid {{ $color['color'] }}33;">
-                                                        {{ strtoupper($log->action) }}
-                                                    </span>
-                                                    <span class="ms-2 badge rounded-pill bg-secondary bg-opacity-10 text-secondary fw-semibold" style="font-size: 0.65rem;">
-                                                        {{ strtoupper($log->entity_label) }}
-                                                    </span>
-                                                    <h6 class="fw-bold text-dark mb-0 mt-1" style="font-size: 0.9rem;">{{ ucfirst($log->description) }}</h6>
-                                                </div>
-                                                <div class="text-end">
-                                                    <span class="text-muted fw-semibold d-block" style="font-size: 0.72rem;">{{ $log->created_at->format('d M Y, H:i') }}</span>
-                                                    <span class="text-muted d-block opacity-75" style="font-size: 0.65rem;">{{ $log->created_at->diffForHumans() }}</span>
-                                                </div>
-                                            </div>
-
-                                            @if($log->action === 'updated' && !empty($changed))
-                                                <div class="mt-3 bg-white rounded-3 border p-3">
-                                                    <p class="text-muted fw-semibold mb-2" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">Perubahan Data</p>
-                                                    <div class="table-responsive">
-                                                        <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.78rem;">
-                                                            <tbody>
-                                                                @foreach($changed as $c)
-                                                                    <tr>
-                                                                        <td class="fw-semibold text-secondary" style="width: 25%;">{{ ucfirst(str_replace('_', ' ', $c['field'])) }}</td>
-                                                                        <td class="text-danger opacity-75 text-decoration-line-through text-truncate" style="max-width: 150px;" title="{{ $c['old'] }}">{{ $c['old'] ?? '-' }}</td>
-                                                                        <td style="width: 20px;" class="text-center text-muted"><i class="fa-solid fa-arrow-right"></i></td>
-                                                                        <td class="text-success fw-medium text-truncate" style="max-width: 150px;" title="{{ $c['new'] }}">{{ $c['new'] ?? '-' }}</td>
-                                                                    </tr>
-                                                                @endforeach
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
+            <div class="bg-white rounded-4 shadow-sm p-4 p-md-5 border-0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                    <h5 class="fw-bold mb-0 text-dark fs-5"><i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i>Activity Log</h5>
+                    
+                    {{-- Search Filters --}}
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <select id="history-user-filter" class="form-select form-select-sm" style="width: 150px;">
+                            <option value="">Semua User</option>
+                            @foreach($allUsers as $u)
+                                <option value="{{ $u->id }}">{{ $u->name }}</option>
                             @endforeach
+                        </select>
+                        <input type="date" id="history-date-filter" class="form-control form-control-sm" style="width: 140px;">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <input type="text" id="history-search-filter" class="form-control" placeholder="Cari aktivitas...">
+                            <span class="input-group-text bg-white border-start-0 text-muted"><i class="fa-solid fa-search"></i></span>
                         </div>
                     </div>
-                @endif
+                </div>
+                
+                <div id="history-container">
+                    @include('programs.partials.history_list', ['activityLogs' => $activityLogs])
+                </div>
             </div>
         </div>
         {{-- TAB 6: MEMBERS --}}
         <div class="tab-pane fade" id="member" role="tabpanel" aria-labelledby="member-tab">
             <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-light">
+                <div class="card-header bg-white py-3 px-4 d-flex rounded-4 justify-content-between align-items-center border-bottom border-light">
                     <h5 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">
                         <i class="fa-solid fa-users text-primary me-2"></i>Project Members
                     </h5>
@@ -2193,19 +2265,120 @@
 
     // ---- Init popovers (status chips) using DOM content divs ----
     document.addEventListener('DOMContentLoaded', function () {
-        ['upcoming','active','delayed','completed'].forEach(function(status) {
+        const statusChips = ['upcoming', 'active', 'delayed', 'completed'];
+        const popoverInstances = [];
+
+        statusChips.forEach(function(status) {
             var chip    = document.getElementById('chip-' + status);
             var content = document.getElementById('chip-' + status + '-content');
             if (!chip || !content) return;
-            new bootstrap.Popover(chip, {
+
+            var popover = new bootstrap.Popover(chip, {
                 html: true,
-                trigger: 'hover focus',
+                trigger: 'click', 
                 sanitize: false,
                 title: chip.querySelector('i').outerHTML + ' ' + chip.querySelector('span').textContent.trim(),
                 content: content.innerHTML,
-                placement: 'bottom'
+                placement: 'bottom',
+                container: 'body',
+                offset: [0, 5],
+                customClass: 'status-popover'
+            });
+
+            popoverInstances.push(popover);
+
+            // Close others when one is clicked
+            chip.addEventListener('click', function() {
+                popoverInstances.forEach(instance => {
+                    if (instance !== popover) {
+                        instance.hide();
+                    }
+                });
             });
         });
+
+        // Close all popovers when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.chip-status') && !e.target.closest('.status-popover')) {
+                popoverInstances.forEach(instance => instance.hide());
+            }
+        });
+    });
+
+    // ---- History AJAX Search & Pagination ----
+    document.addEventListener('DOMContentLoaded', function() {
+        const historyContainer = document.getElementById('history-container');
+        const userFilter       = document.getElementById('history-user-filter');
+        const dateFilter       = document.getElementById('history-date-filter');
+        const searchFilter     = document.getElementById('history-search-filter');
+
+        if (!historyContainer) return;
+
+        let historyTimeout;
+
+        function fetchHistory(page = 1) {
+            const uId = userFilter.value;
+            const date = dateFilter.value;
+            const search = searchFilter.value;
+
+            // Visual feedback
+            historyContainer.style.opacity = '0.5';
+            historyContainer.style.pointerEvents = 'none';
+
+            const url = `{{ route('programs.history', $program->id) }}?page=${page}&user_id=${uId}&date=${date}&search=${encodeURIComponent(search)}`;
+
+            fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.text())
+            .then(html => {
+                historyContainer.innerHTML = html;
+                historyContainer.style.opacity = '1';
+                historyContainer.style.pointerEvents = 'auto';
+                
+                // Re-bind pagination links
+                bindPagination();
+            })
+            .catch(err => {
+                console.error('History Fetch Error:', err);
+                historyContainer.style.opacity = '1';
+                historyContainer.style.pointerEvents = 'auto';
+            });
+        }
+
+        function bindPagination() {
+            const paginationEl = historyContainer.querySelector('.ajax-pagination');
+            if (!paginationEl) return;
+
+            const links = paginationEl.querySelectorAll('a');
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const urlObj = new URL(this.href);
+                    const page = urlObj.searchParams.get('page');
+                    fetchHistory(page);
+                    
+                    // Scroll to top of tab section
+                    document.getElementById('riwayat-tab').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        }
+
+        if (userFilter) {
+            userFilter.addEventListener('change', () => fetchHistory(1));
+        }
+        if (dateFilter) {
+            dateFilter.addEventListener('change', () => fetchHistory(1));
+        }
+        if (searchFilter) {
+            searchFilter.addEventListener('input', () => {
+                clearTimeout(historyTimeout);
+                historyTimeout = setTimeout(() => fetchHistory(1), 500);
+            });
+        }
+
+        // Initial bind
+        bindPagination();
     });
 </script>
 @endpush
@@ -2393,7 +2566,84 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', () => { initSortable(); initDateRangePickers(); });
+    // ---- Inline Date Range Pickers for Activity / Sub Activity rows ----
+    function initInlineDatePickers() {
+        document.querySelectorAll('.inline-date-range').forEach(function(el) {
+            if (el._fpInline) return; // Already initialised
+
+            // Create a hidden real input Flatpickr attaches to
+            var hiddenInput = document.createElement('input');
+            hiddenInput.type = 'text';
+            hiddenInput.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;';
+            el.appendChild(hiddenInput);
+
+            var fp = flatpickr(hiddenInput, {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                defaultDate: [el.dataset.start || null, el.dataset.end || null].filter(Boolean),
+                onChange: function(selectedDates) {
+                    if (selectedDates.length !== 2) return;
+
+                    var fmt = function(d) { return d.toISOString().split('T')[0]; };
+                    var start = fmt(selectedDates[0]);
+                    var end   = fmt(selectedDates[1]);
+
+                    // Visual feedback
+                    var displayEl = el.querySelector('.act-date-display, .subact-date-display');
+                    var originalHtml = displayEl ? displayEl.innerHTML : '';
+                    if (displayEl) displayEl.innerHTML = '<span class="text-primary fst-italic">Menyimpan...</span>';
+
+                    var type    = el.dataset.type;  // 'activity' or 'sub_activity'
+                    var rawId   = (type === 'activity' ? 'act_' : 'subact_') + el.dataset.id;
+                    var csrfEl  = document.querySelector('meta[name="csrf-token"]');
+                    if (!csrfEl) return;
+
+                    fetch('/api/projects/gantt/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfEl.content,
+                            'Accept':       'application/json'
+                        },
+                        body: JSON.stringify({ id: rawId, start: start, end: end, progress: null })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            // Update display
+                            el.dataset.start = start;
+                            el.dataset.end   = end;
+                            var opts = { day: '2-digit', month: 'short', year: '2-digit' };
+                            var s = new Date(start + 'T00:00:00').toLocaleDateString('id-ID', opts);
+                            var e = new Date(end   + 'T00:00:00').toLocaleDateString('id-ID', opts);
+                            if (displayEl) displayEl.innerHTML = s + ' \u2192 ' + e;
+                            // Brief green flash
+                            el.style.borderColor = '#4ade80';
+                            el.style.background  = '#f0fdf4';
+                            setTimeout(function() {
+                                el.style.borderColor = '';
+                                el.style.background  = 'transparent';
+                            }, 1200);
+                        } else {
+                            if (displayEl) displayEl.innerHTML = originalHtml;
+                            alert('Gagal menyimpan tanggal.');
+                        }
+                    })
+                    .catch(function() {
+                        if (displayEl) displayEl.innerHTML = originalHtml;
+                        alert('Koneksi gagal.');
+                    });
+                }
+            });
+
+            el._fpInline = fp;
+
+            // Open picker on click anywhere in the span
+            el.addEventListener('click', function() { fp.open(); });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initSortable(); initDateRangePickers(); initInlineDatePickers(); });
 
     function openDuplicateModal(type, id, name) {
         document.getElementById('duplicateType').value = type;

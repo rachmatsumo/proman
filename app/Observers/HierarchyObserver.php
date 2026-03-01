@@ -81,6 +81,7 @@ class HierarchyObserver
         ActivityLog::create([
             'loggable_type' => get_class($model),
             'loggable_id'   => $model->getKey(),
+            'user_id'       => auth()->id(),
             'action'        => $action,
             'description'   => $desc,
             'old_data'      => $old,

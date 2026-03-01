@@ -1,5 +1,7 @@
-{{-- Frappe Gantt — Reverted from FullCalendar per user request --}}
+{{-- Frappe Gantt --}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
+    .flatpickr-calendar { z-index: 9999 !important; }
     .gantt-wrapper {
         background: #f8fafc;
         padding: 20px;
@@ -108,15 +110,11 @@
                         <input type="text" name="name" id="gantt-task-name" class="form-control form-control-sm bg-light" readonly>
                     </div>
                     
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Mulai <span class="text-danger">*</span></label>
-                            <input type="date" name="start" id="gantt-task-start" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Tanggal Selesai <span class="text-danger">*</span></label>
-                            <input type="date" name="end" id="gantt-task-end" class="form-control form-control-sm" required>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Periode Tanggal <span class="text-danger">*</span></label>
+                        <input type="text" id="gantt-date-range-picker" class="form-control form-control-sm" placeholder="Pilih tanggal mulai — selesai" readonly>
+                        <input type="hidden" id="gantt-task-start" name="start">
+                        <input type="hidden" id="gantt-task-end" name="end">
                     </div>
                     
                     <div id="gantt-progress-container">
@@ -141,9 +139,28 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 (function () {
     'use strict';
+
+    // Flatpickr range picker for the Gantt update modal
+    var ganttDateFp = flatpickr('#gantt-date-range-picker', {
+        mode: 'range',
+        dateFormat: 'd M Y',
+        locale: { firstDayOfWeek: 1 },
+        onChange: function(selectedDates) {
+            if (selectedDates.length === 2) {
+                var fmt = function(d) { return d.toISOString().split('T')[0]; };
+                document.getElementById('gantt-task-start').value = fmt(selectedDates[0]);
+                document.getElementById('gantt-task-end').value   = fmt(selectedDates[1]);
+            } else {
+                document.getElementById('gantt-task-start').value = '';
+                document.getElementById('gantt-task-end').value   = '';
+            }
+        }
+    });
+
 
     var rawTasks = {!! $ganttTasksJson !!};
     
@@ -197,6 +214,7 @@
                 t.end = end_str;
                 recalculateRollups();
                 gantt.refresh(tasks);
+                drawProgramRange();
             }
             
             updateGanttBackend(task.id, start, end, task.progress);
@@ -206,8 +224,8 @@
             var t = tasks.find(function(item) { return item.id === task.id; });
             if (t) {
                 t.progress = progress;
-                // Progress rollup is more complex (weighted), maybe just refresh
                 gantt.refresh(tasks);
+                drawProgramRange();
             }
             updateGanttBackend(task.id, task._start, task._end, progress);
         },
@@ -215,6 +233,99 @@
             openGanttUpdateModal(task);
         }
     });
+
+    // ---- Program date-range background highlight ----
+    function drawProgramRange() {
+        var svg = document.getElementById('gantt-svg');
+        if (!svg) return;
+
+        // Remove previous highlight
+        var old = svg.querySelector('#prog-range-bg');
+        if (old) old.remove();
+
+        // Find the program bar's <rect class="bar"> in the SVG DOM
+        var progTask = tasks.find(function(t) { return t.id.indexOf('prog_') === 0; });
+        if (!progTask) return;
+
+        // Frappe Gantt bar wrapper: <g data-id="prog_X">
+        var barWrapper = svg.querySelector('[data-id="' + progTask.id + '"]');
+        if (!barWrapper) return;
+        var barRect = barWrapper.querySelector('rect.bar');
+        if (!barRect) return;
+
+        var x1 = parseFloat(barRect.getAttribute('x'));
+        var barW = parseFloat(barRect.getAttribute('width'));
+        var x2 = x1 + barW;
+        if (barW <= 0) return;
+
+        // Use the SVG's actual viewBox height or a large fallback
+        var svgH = parseInt(svg.getAttribute('height') || svg.getBBox ? 0 : 2000);
+        try { svgH = svg.getBBox().height || 2000; } catch(e) { svgH = 2000; }
+
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', 'prog-range-bg');
+
+        // Shaded band inside program range
+        var band = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        band.setAttribute('x',      x1);
+        band.setAttribute('y',      0);
+        band.setAttribute('width',  barW);
+        band.setAttribute('height', svgH);
+        band.setAttribute('fill',   'rgba(99,102,241,0.06)');
+        band.setAttribute('pointer-events', 'none');
+        g.appendChild(band);
+
+        // Vertical start line (indigo dashed)
+        var ls = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        ls.setAttribute('x1', x1); ls.setAttribute('y1', 0);
+        ls.setAttribute('x2', x1); ls.setAttribute('y2', svgH);
+        ls.setAttribute('stroke', 'rgba(99,102,241,0.55)');
+        ls.setAttribute('stroke-width', '2');
+        ls.setAttribute('stroke-dasharray', '5,3');
+        ls.setAttribute('pointer-events', 'none');
+        g.appendChild(ls);
+
+        // Vertical end line (red dashed)
+        var le = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        le.setAttribute('x1', x2); le.setAttribute('y1', 0);
+        le.setAttribute('x2', x2); le.setAttribute('y2', svgH);
+        le.setAttribute('stroke', 'rgba(239,68,68,0.55)');
+        le.setAttribute('stroke-width', '2');
+        le.setAttribute('stroke-dasharray', '5,3');
+        le.setAttribute('pointer-events', 'none');
+        g.appendChild(le);
+
+        // "End" label near top of end line
+        var lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lbl.setAttribute('x', x2 + 3);
+        lbl.setAttribute('y', 62);
+        lbl.setAttribute('fill', 'rgba(239,68,68,0.8)');
+        lbl.setAttribute('font-size', '9');
+        lbl.setAttribute('pointer-events', 'none');
+        lbl.textContent = 'End';
+        g.appendChild(lbl);
+
+        // "Start" label near top of start line
+        var lblS = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lblS.setAttribute('x', x1 + 3);
+        lblS.setAttribute('y', 62);
+        lblS.setAttribute('fill', 'rgba(99,102,241,0.8)');
+        lblS.setAttribute('font-size', '9');
+        lblS.setAttribute('pointer-events', 'none');
+        lblS.textContent = 'Start';
+        g.appendChild(lblS);
+
+        // Insert BEFORE the bars group so we're above grid-background but below bars
+        var barsGroup = svg.querySelector('g.bars');
+        if (barsGroup) {
+            svg.insertBefore(g, barsGroup);
+        } else {
+            svg.appendChild(g); // fallback: append last (with pointer-events:none it's safe)
+        }
+    }
+
+    // Wait for Frappe Gantt to finish rendering before drawing overlay
+    setTimeout(drawProgramRange, 300);
 
     function recalculateRollups() {
         // 0. Activities from Sub Activities
@@ -321,6 +432,12 @@
         document.getElementById('gantt-task-end').value = task.end;
         document.getElementById('gantt-task-progress').value = task.progress;
         document.getElementById('gantt-task-progress-range').value = task.progress;
+        // Set the visual Flatpickr range picker
+        if (task.start && task.end) {
+            ganttDateFp.setDate([task.start, task.end], false, 'Y-m-d');
+        } else {
+            ganttDateFp.clear();
+        }
         
         // Dynamic Styling
         const iconBg = document.getElementById('gantt-modal-icon-bg');

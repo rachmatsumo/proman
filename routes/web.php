@@ -36,6 +36,9 @@ Route::middleware('auth')->group(function () {
     // Program Partials for AJAX Tabs
     Route::get('programs/{program}/partial-gantt', [ProgramController::class, 'partialGantt'])->name('programs.partial-gantt');
     Route::get('programs/{program}/partial-calendar', [ProgramController::class, 'partialCalendar'])->name('programs.partial-calendar');
+    Route::get('programs/{program}/history', [ProgramController::class, 'history'])->name('programs.history');
+    Route::get('programs/{program}/export-excel', [ProgramController::class, 'exportExcel'])->name('programs.export-excel');
+    Route::get('programs/{program}/export-pdf', [ProgramController::class, 'exportPdf'])->name('programs.export-pdf');
 
     // CRUD Modules
     Route::resource('programs', ProgramController::class);

@@ -84,4 +84,26 @@ class Activity extends Model
     {
         return $this->hasMany(SubActivity::class)->orderBy('sort_order');
     }
+
+    /**
+     * Recalculate and save activity progress based on sub-activities.
+     */
+    public function syncProgressFromSubActivities()
+    {
+        if ($this->subActivities()->count() > 0) {
+            $avgProgress = round($this->subActivities()->avg('progress') ?? 0);
+            $this->progress = $avgProgress;
+            
+            // Also update manual status if it reaches 100% or is back to 0%?
+            // User didn't explicitly ask for manual status update, but it's often linked.
+            // For now, I'll stick to updating progress as requested.
+            if ($this->progress == 100) {
+                $this->status = 'Done';
+            } elseif ($this->progress > 0 && $this->status == 'To Do') {
+                $this->status = 'On Progress';
+            }
+            
+            $this->save();
+        }
+    }
 }

@@ -49,4 +49,19 @@ class SubActivity extends Model
         if ($this->start_date > $today) return 'Upcoming';
         return 'Active';
     }
+
+    protected static function booted()
+    {
+        static::saved(function ($subActivity) {
+            if ($subActivity->activity) {
+                $subActivity->activity->syncProgressFromSubActivities();
+            }
+        });
+
+        static::deleted(function ($subActivity) {
+            if ($subActivity->activity) {
+                $subActivity->activity->syncProgressFromSubActivities();
+            }
+        });
+    }
 }
