@@ -29,12 +29,12 @@ class AttachmentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'attachable_type' => 'required|in:sub_program,milestone,activity',
+            'attachable_type' => 'required|in:sub_program,milestone,activity,sub_activity',
             'attachable_id'   => 'required|integer',
             'type'            => 'required|in:RAB,Evidence,Paparan,Other',
             'name'            => 'required|string|max:255',
             'description'     => 'nullable|string|max:1000',
-            'file'            => 'required|file|max:20480', // 20 MB max
+            'file'            => 'nullable|file|max:20480', // 20 MB max
         ]);
 
         $file = $request->file('file');
@@ -44,6 +44,7 @@ class AttachmentController extends Controller
             'sub_program' => \App\Models\SubProgram::class,
             'milestone'   => \App\Models\Milestone::class,
             'activity'    => \App\Models\Activity::class,
+            'sub_activity' => \App\Models\SubActivity::class,
         ];
 
         $attachableType = $modelMap[$request->attachable_type];
@@ -52,19 +53,39 @@ class AttachmentController extends Controller
         // Verify entity exists
         $entity = $attachableType::findOrFail($attachableId);
 
-        // Store file
-        $storedPath = $file->store('attachments/' . $request->attachable_type . '/' . $attachableId, 'local');
+        // Store file if provided
+        $storedPath = null;
+        $originalName = null;
+        $fileSize = null;
+        $mimeType = null;
+
+        if ($file) {
+            $storedPath = $file->store('attachments/' . $request->attachable_type . '/' . $attachableId, 'local');
+            $originalName = $file->getClientOriginalName();
+            $fileSize = $file->getSize();
+            $mimeType = $file->getMimeType();
+        }
 
         $attachment = Attachment::create([
             'attachable_type'   => $attachableType,
             'attachable_id'     => $attachableId,
             'type'              => $request->type,
             'name'              => $request->name,
-            'original_filename' => $file->getClientOriginalName(),
+            'original_filename' => $originalName,
             'file_path'         => $storedPath,
-            'file_size'         => $file->getSize(),
-            'mime_type'         => $file->getMimeType(),
+            'file_size'         => $fileSize,
+            'mime_type'         => $mimeType,
             'description'       => $request->description,
+        ]);
+
+        // Log Activity
+        \App\Models\ActivityLog::create([
+            'loggable_type' => $attachableType,
+            'loggable_id'   => $attachableId,
+            'user_id'       => auth()->id(),
+            'action'        => 'updated', // We treat adding attachment as an update to the entity
+            'description'   => $attachment->created_at->format('Y-m-d') . ' : Pembuatan ' . $attachment->type . ' - ' . $attachment->name,
+            'new_data'      => ['attachment_id' => $attachment->id, 'name' => $attachment->name],
         ]);
 
         if ($request->wantsJson()) {
@@ -98,7 +119,20 @@ class AttachmentController extends Controller
      */
     public function destroy(Attachment $attachment)
     {
-        Storage::disk('local')->delete($attachment->file_path);
+        if ($attachment->file_path) {
+            Storage::disk('local')->delete($attachment->file_path);
+        }
+
+        // Log Activity before deletion
+        \App\Models\ActivityLog::create([
+            'loggable_type' => $attachment->attachable_type,
+            'loggable_id'   => $attachment->attachable_id,
+            'user_id'       => auth()->id(),
+            'action'        => 'updated',
+            'description'   => now()->format('Y-m-d') . ' : Penghapusan ' . $attachment->type . ' - ' . $attachment->name,
+            'old_data'      => ['attachment_id' => $attachment->id, 'name' => $attachment->name],
+        ]);
+
         $attachment->delete();
 
         if (request()->wantsJson()) {

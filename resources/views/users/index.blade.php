@@ -83,7 +83,7 @@
                                 <a href="{{ route('users.edit', $user->id) }}" class="btn btn-sm btn-light border p-2 rounded-3 text-primary" title="Edit">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </a>
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Hapus user ini?')">
+                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="confirmDelete(event, this)">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-light border p-2 rounded-3 text-danger" title="Delete">
                                         <i class="fa-solid fa-trash-can"></i>
@@ -115,6 +115,18 @@
 
 @push('scripts')
 <script>
+    async function confirmDelete(event, form) {
+        event.preventDefault();
+        const result = await ConfirmSwal.fire({
+            title: 'Konfirmasi Hapus',
+            text: 'Hapus user ini?',
+        });
+
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    }
+
 document.getElementById('userSearch')?.addEventListener('input', function(e) {
     let term = e.target.value.toLowerCase();
     document.querySelectorAll('.user-row').forEach(row => {

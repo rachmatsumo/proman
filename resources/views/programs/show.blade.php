@@ -96,28 +96,70 @@
 
     $totalMilestones = $program->subPrograms->flatMap(fn($s) => $s->milestones)->count();
 
-    // Pre-compute attachment data
+    // Pre-compute attachment data and recursive counts
     $attachmentsData = [];
+    $recursiveCounts = [
+        'sub_program' => [],
+        'milestone'   => [],
+        'activity'    => [],
+        'sub_activity'=> [],
+    ];
+
     foreach ($program->subPrograms as $sub) {
+        $subTotal = $sub->attachments->count();
         $attachmentsData[] = [
             'attachable_type' => 'sub_program',
             'attachable_id'   => $sub->id,
+            'name'            => $sub->name,
+            'sub_program_id'  => $sub->id,
             'attachments'     => $sub->attachments->values(),
         ];
+
         foreach ($sub->milestones as $ms) {
+            $msTotal = $ms->attachments->count();
             $attachmentsData[] = [
                 'attachable_type' => 'milestone',
                 'attachable_id'   => $ms->id,
+                'name'            => $ms->name,
+                'sub_program_id'  => $sub->id,
+                'milestone_id'    => $ms->id,
                 'attachments'     => $ms->attachments->values(),
             ];
+
             foreach ($ms->activities as $act) {
+                $actTotal = $act->attachments->count();
                 $attachmentsData[] = [
                     'attachable_type' => 'activity',
                     'attachable_id'   => $act->id,
+                    'name'            => $act->name,
+                    'sub_program_id'  => $sub->id,
+                    'milestone_id'    => $ms->id,
+                    'activity_id'     => $act->id,
                     'attachments'     => $act->attachments->values(),
                 ];
+
+                foreach ($act->subActivities as $subAct) {
+                    $saTotal = $subAct->attachments->count();
+                    $attachmentsData[] = [
+                        'attachable_type' => 'sub_activity',
+                        'attachable_id'   => $subAct->id,
+                        'name'            => $subAct->name,
+                        'sub_program_id'  => $sub->id,
+                        'milestone_id'    => $ms->id,
+                        'activity_id'     => $act->id,
+                        'sub_activity_id'=> $subAct->id,
+                        'attachments'     => $subAct->attachments->values(),
+                    ];
+                    $recursiveCounts['sub_activity'][$subAct->id] = $saTotal;
+                    $actTotal += $saTotal;
+                }
+                $recursiveCounts['activity'][$act->id] = $actTotal;
+                $msTotal += $actTotal;
             }
+            $recursiveCounts['milestone'][$ms->id] = $msTotal;
+            $subTotal += $msTotal;
         }
+        $recursiveCounts['sub_program'][$sub->id] = $subTotal;
     }
 
     // ---- Cascading bobot helpers ----
@@ -223,7 +265,7 @@
                         @if($userRole === 'administrator')
                         <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-2 px-3 flex-grow-1 flex-md-grow-0"
                                 style="background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.5); color: #fca5a5;"
-                                onclick="if(confirm('Hapus program ini secara permanen?')) deleteHierarchyItem('{{ route('programs.destroy', $program->id) }}', '', () => { window.location.href = '{{ route('projects.gantt') }}'; })">
+                                onclick="deleteHierarchyItem('{{ route('programs.destroy', $program->id) }}', 'Hapus program ini secara permanen?', () => { window.location.href = '{{ route('projects.gantt') }}'; })">
                             <i class="fa-solid fa-trash-can"></i> Delete
                         </button>
                         @endif
@@ -402,7 +444,7 @@
         <ul class="nav nav-pills mb-4 gap-2 flex-nowrap border-bottom border-light-subtle pb-3" id="programTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="hierarki-tab" data-bs-toggle="pill" data-bs-target="#hierarki" type="button" role="tab" aria-controls="hierarki" aria-selected="true" style="transition: all 0.2s;">
-                    <i class="fa-solid fa-diagram-project"></i> Hierarki
+                    <i class="fa-solid fa-diagram-project"></i> Hierarchy
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -416,10 +458,10 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen" type="button" role="tab" aria-controls="dokumen" aria-selected="false" style="transition: all 0.2s;">
-                    <i class="fa-solid fa-folder-open"></i> Document
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 text-nowrap" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen" type="button" role="tab" aria-controls="dokumen" aria-selected="false" data-url="{{ route('programs.attachments', $program->id) }}" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-folder-open"></i> Documentation
                     @php $totalAttachments = collect($attachmentsData)->pluck('attachments')->flatten(1)->count(); @endphp
-                    <span class="badge rounded-pill ms-1" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $totalAttachments ?? 0 }}</span>
+                    <span class="badge rounded-pill ms-1" id="attachment-count-badge" style="background: rgba(0,0,0,0.1); color: inherit;">{{ $totalAttachments ?? 0 }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -554,14 +596,14 @@
                         </button>
                         @endif
 
-                        <button type="button" class="btn btn-sm fw-semibold px-2"
+                        <button type="button" class="btn btn-sm fw-semibold px-2 position-relative"
                                 style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fbbf24; font-size: 0.72rem;"
                                 title="Lampiran"
                                 data-bs-toggle="modal" data-bs-target="#modalAttachments"
                                 onclick="openAttachmentModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
                             <i class="fa-solid fa-paperclip"></i>
-                            @if($sub->attachments->count() > 0)
-                            <span class="badge rounded-pill ms-1" style="background: #fbbf24; color: #1e1b4b; font-size: 0.6rem;">{{ $sub->attachments->count() }}</span>
+                            @if(($recursiveCounts['sub_program'][$sub->id] ?? 0) > 0)
+                            <span class="badge rounded-pill ms-1 position-absolute top-0 start-100 translate-middle" style="background: #fbbf24; color: #1e1b4b; font-size: 0.6rem;">{{ $recursiveCounts['sub_program'][$sub->id] }}</span>
                             @endif
                         </button>
 
@@ -585,7 +627,7 @@
                         <button type="button" class="btn btn-sm"
                                 style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.72rem;"
                                 title="Delete"
-                                onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
+                                onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { refreshPageContent(); })">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                         @endif
@@ -618,8 +660,8 @@
                                    data-bs-toggle="modal" data-bs-target="#modalAttachments"
                                    onclick="openAttachmentModal('sub_program', {{ $sub->id }}, '{{ addslashes($sub->name) }}')">
                                     <i class="fa-solid fa-paperclip text-warning" style="width: 16px;"></i> Lampiran
-                                    @if($sub->attachments->count() > 0)
-                                    <span class="badge bg-warning text-dark ms-auto">{{ $sub->attachments->count() }}</span>
+                                    @if(($recursiveCounts['sub_program'][$sub->id] ?? 0) > 0)
+                                    <span class="badge bg-warning text-dark ms-auto">{{ $recursiveCounts['sub_program'][$sub->id] }}</span>
                                     @endif
                                 </a>
                             </li>
@@ -644,7 +686,7 @@
                             <li class="dropdown-divider my-1 opacity-50"></li>
                             <li>
                                 <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0)"
-                                   onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { document.querySelector('.sub-card[data-id=\'{{ $sub->id }}\']').remove(); })">
+                                   onclick="deleteHierarchyItem('{{ route('sub_programs.destroy', $sub->id) }}', 'Hapus sub program ini?', () => { refreshPageContent(); })">
                                     <i class="fa-solid fa-trash-can" style="width: 16px;"></i> Delete Sub Program
                                 </a>
                             </li>
@@ -733,7 +775,7 @@
                             @endif
                             @if($userRole === 'administrator')
                             <button type="button" class="btn btn-sm btn-light border-0 p-1 rounded-circle" style="width: 24px; height: 24px; color: #ef4444; background: rgba(0,0,0,0.03);" title="Hapus Section"
-                                    onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus section divider ini?', () => { document.querySelector('#ms-{{ $ms->id }}').remove(); recalculateHierarchyNumbering(); })">
+                                    onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus section divider ini?', () => { refreshPageContent(); recalculateHierarchyNumbering(); })">
                                 <i class="fa-solid fa-trash-can" style="font-size: 0.7rem;"></i>
                             </button>
                             @endif
@@ -803,13 +845,13 @@
                                 </button>
                                 @endif
 
-                                <button type="button" class="btn btn-sm fw-semibold" style="background: #fef3c7; border: 1px solid #fde68a; color: #92400e; font-size: 0.68rem;"
+                                <button type="button" class="btn btn-sm fw-semibold position-relative" style="background: #fef3c7; border: 1px solid #fde68a; color: #92400e; font-size: 0.68rem;"
                                         title="Lampiran"
                                         data-bs-toggle="modal" data-bs-target="#modalAttachments"
                                         onclick="openAttachmentModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
                                     <i class="fa-solid fa-paperclip"></i>
-                                    @if($ms->attachments->count() > 0)
-                                    <span class="badge rounded-pill ms-1" style="background: #f59e0b; color: white; font-size: 0.58rem;">{{ $ms->attachments->count() }}</span>
+                                    @if(($recursiveCounts['milestone'][$ms->id] ?? 0) > 0)
+                                    <span class="badge rounded-pill ms-1 position-absolute top-0 start-100 translate-middle" style="background: #f59e0b; color: white; font-size: 0.58rem;">{{ $recursiveCounts['milestone'][$ms->id] }}</span>
                                     @endif
                                 </button>
 
@@ -823,7 +865,7 @@
 
                                 @if($userRole === 'administrator')
                                 <button type="button" class="btn btn-sm p-1" style="color: #ef4444; background: none; border: none; font-size: 0.75rem;" title="Hapus Milestone"
-                                        onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
+                                        onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { refreshPageContent(); })">
                                     <i class="fa-solid fa-times"></i>
                                 </button>
                                 @endif
@@ -863,8 +905,8 @@
                                                data-bs-toggle="modal" data-bs-target="#modalAttachments"
                                                onclick="openAttachmentModal('milestone', {{ $ms->id }}, '{{ addslashes($ms->name) }}')">
                                                 <i class="fa-solid fa-paperclip text-warning" style="width: 16px;"></i> Lampiran
-                                                @if($ms->attachments->count() > 0)
-                                                <span class="badge bg-warning text-dark ms-auto">{{ $ms->attachments->count() }}</span>
+                                                @if(($recursiveCounts['milestone'][$ms->id] ?? 0) > 0)
+                                                <span class="badge bg-warning text-dark ms-auto">{{ $recursiveCounts['milestone'][$ms->id] }}</span>
                                                 @endif
                                             </a>
                                         </li>
@@ -881,7 +923,7 @@
                                         <li class="dropdown-divider my-1 opacity-50"></li>
                                         <li>
                                             <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2 text-danger" href="javascript:void(0)"
-                                               onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { document.querySelector('.milestone-card[data-id=\'{{ $ms->id }}\']').remove(); })">
+                                               onclick="deleteHierarchyItem('{{ route('milestones.destroy', $ms->id) }}', 'Hapus milestone ini?', () => { refreshPageContent(); })">
                                                 <i class="fa-solid fa-trash-can" style="width: 16px;"></i> Delete {{ $ms->type === 'key_result' ? 'KR' : 'Milestone' }}
                                             </a>
                                         </li>
@@ -1014,14 +1056,14 @@
                                                 <i class="fa-solid fa-copy"></i>
                                             </button>
                                             <button type="button"
-                                                    class="btn btn-sm p-1"
+                                                    class="btn btn-sm p-1 position-relative"
                                                     style="color: #92400e; background: none; border: none; font-size: 0.75rem;"
                                                     title="Lampiran Activity"
                                                     onclick="openAttachmentModal('activity', {{ $act->id }}, '{{ addslashes($act->name) }}')">
                                                 <i class="fa-solid fa-paperclip"></i>
-                                                @if($act->attachments->count() > 0)
-                                                <span class="badge rounded-pill" style="background: #f59e0b; color: white; font-size: 0.5rem; position: relative; top: -5px;">{{ $act->attachments->count() }}</span>
-                                                @endif
+                                                    @if(($recursiveCounts['activity'][$act->id] ?? 0) > 0)
+                                                        <span class="badge rounded-pill position-absolute top-0 start-100 translate-middle" style="background: #f59e0b; color: white; font-size: 0.5rem; z-index: 10;">{{ $recursiveCounts['activity'][$act->id] }}</span>
+                                                    @endif
                                             </button>
                                             @endif
                                             @if($userRole === 'administrator')
@@ -1106,11 +1148,11 @@
                                                                                     onclick="openDuplicateModal('sub_activity', {{ $subAct->id }}, '{{ addslashes($subAct->name) }}')">
                                                                                 <i class="fa-solid fa-copy"></i>
                                                                             </button>
-                                                                            <button type="button" class="btn btn-sm p-1" style="color: #92400e; background: none; border: none; font-size: 0.75rem;" title="Lampiran Sub Activity"
+                                                                            <button type="button" class="btn btn-sm p-1 position-relative" style="color: #92400e; background: none; border: none; font-size: 0.75rem;" title="Lampiran Sub Activity"
                                                                                     onclick="openAttachmentModal('sub_activity', {{ $subAct->id }}, '{{ addslashes($subAct->name) }}')">
                                                                                 <i class="fa-solid fa-paperclip"></i>
                                                                                 @if($subAct->attachments->count() > 0)
-                                                                                <span class="badge rounded-pill" style="background: #f59e0b; color: white; font-size: 0.5rem; position: relative; top: -5px;">{{ $subAct->attachments->count() }}</span>
+                                                                                <span class="badge rounded-pill position-absolute top-0 start-100 translate-middle" style="background: #f59e0b; color: white; font-size: 0.5rem; z-index: 10;">{{ $subAct->attachments->count() }}</span>
                                                                                 @endif
                                                                             </button>
                                                                             @endif
@@ -1210,77 +1252,46 @@
         {{-- TAB 4: DOKUMEN --}}
         <div class="tab-pane fade" id="dokumen" role="tabpanel" aria-labelledby="dokumen-tab">
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-transparent">
-                <div class="card-body p-0">
-                    @if($totalAttachments === 0)
-                        <div class="text-center py-5 bg-white rounded-4 border">
-                            <i class="fa-solid fa-folder-open text-muted opacity-25 mb-3" style="font-size: 3.5rem;"></i>
-                            <p class="text-muted fw-semibold">Belum ada dokumen terlampir.</p>
+                <div class="card-header bg-white border-0 py-3 px-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <h5 class="fw-bold mb-0 text-dark fs-5"><i class="fa-solid fa-folder-open text-secondary me-2"></i>Documentation</h5>
+                        
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            {{-- Search Filter --}}
+                            <div class="position-relative" style="width: 200px;">
+                                <i class="fa-solid fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.75rem;"></i>
+                                <input type="text" id="att-search-filter" class="form-control form-control-sm ps-5 rounded-pill border-light-subtle" placeholder="Cari lampiran...">
+                            </div>
+
+                            {{-- Date Filter --}}
+                            <div class="position-relative" style="width: 150px;">
+                                <i class="fa-solid fa-calendar-alt position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.75rem;"></i>
+                                <input type="date" id="att-date-filter" class="form-control form-control-sm ps-5 rounded-pill border-light-subtle">
+                            </div>
+
+                            {{-- Type Filter --}}
+                            <select id="att-type-filter" class="form-select form-select-sm rounded-pill border-light-subtle" style="width: 140px;">
+                                <option value="">Semua Tipe</option>
+                                <option value="file">Hanya File</option>
+                                <option value="note">Hanya Catatan</option>
+                                <option value="RAB">RAB</option>
+                                <option value="Evidence">Evidence</option>
+                                <option value="Paparan">Paparan</option>
+                                <option value="Other">Lainnya</option>
+                            </select>
+
+                            <button type="button" class="btn btn-sm btn-light rounded-pill px-3 border-light-subtle" onclick="resetAttachmentFilters()">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                            </button>
                         </div>
-                    @else
-                        @foreach($attachmentsData as $entity)
-                            @if($entity['attachments']->count() > 0)
-                                @php
-                                    $entityModel = null;
-                                    if ($entity['attachable_type'] === 'sub_program') $entityModel = App\Models\SubProgram::find($entity['attachable_id']);
-                                    if ($entity['attachable_type'] === 'milestone')   $entityModel = App\Models\Milestone::find($entity['attachable_id']);
-                                    if ($entity['attachable_type'] === 'activity')    $entityModel = App\Models\Activity::find($entity['attachable_id']);
-                                    $entityName = $entityModel ? $entityModel->name : 'Unknown';
-                                @endphp
-                                <div class="mb-4">
-                                    <div class="d-flex align-items-center gap-2 mb-3 px-1">
-                                        @if($entity['attachable_type'] === 'sub_program')
-                                            <span class="badge bg-primary text-white rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.05em;">SUB PROGRAM</span>
-                                        @elseif($entity['attachable_type'] === 'milestone')
-                                            <span class="badge bg-info text-dark rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.05em;">MILESTONE</span>
-                                        @else
-                                            <span class="badge bg-success text-white rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.05em;">ACTIVITY</span>
-                                        @endif
-                                        <h6 class="fw-bold text-secondary mb-0 fs-6">{{ $entityName }}</h6>
-                                    </div>
-                                    <div class="row g-3">
-                                        @foreach($entity['attachments'] as $att)
-                                        @php $tc = \App\Models\Attachment::typeColor($att->type); @endphp
-                                        <div class="col-12 col-md-6 col-xl-4">
-                                            <div class="card border-0 shadow-sm rounded-4 h-100 hover-lift" style="transition: transform 0.2s, box-shadow 0.2s;">
-                                                <div class="card-body p-3 d-flex flex-column">
-                                                    <div class="d-flex align-items-start gap-3 mb-3">
-                                                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; background: #f8fafc; border: 1px solid #e2e8f0;">
-                                                            <i class="fa-solid {{ $att->icon_class }} fs-4"></i>
-                                                        </div>
-                                                        <div class="flex-grow-1 min-width-0">
-                                                            <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.85rem;" title="{{ $att->name }}">{{ $att->name }}</h6>
-                                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                                                <span class="badge rounded-pill fw-semibold" style="background: {{ $tc['bg'] }}; color: {{ $tc['color'] }}; font-size: 0.6rem; border: 1px solid {{ $tc['color'] }}33;">
-                                                                    {{ $att->type }}
-                                                                </span>
-                                                                <span class="text-muted" style="font-size: 0.65rem;">{{ $att->file_size_human }}</span>
-                                                            </div>
-                                                            <p class="text-muted small mb-0 flex-grow-1 text-truncate" style="font-size: 0.7rem;" title="{{ $att->original_filename }}">{{ $att->original_filename }}</p>
-                                                        </div>
-                                                    </div>
-                                                    @if($att->description)
-                                                        <p class="text-muted fst-italic mb-3 px-2 py-1 rounded-2" style="font-size: 0.7rem; background: #f1f5f9;">{{ Str::limit($att->description, 60) }}</p>
-                                                    @endif
-                                                    <div class="d-flex gap-2 mt-auto pt-2 border-top border-light-subtle">
-                                                        <a href="{{ $att->download_url }}" class="btn btn-sm flex-grow-1 fw-semibold" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; font-size: 0.75rem;">
-                                                            <i class="fa-solid fa-download me-1"></i> Download
-                                                        </a>
-                                                        <form action="{{ route('attachments.destroy', $att->id) }}" method="POST" onsubmit="return confirm('Hapus dokumen ini?')" class="flex-shrink-0">
-                                                            @csrf @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm px-2" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 0.75rem;" title="Hapus">
-                                                                <i class="fa-solid fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endforeach
-                    @endif
+                    </div>
+                </div>
+                <div class="card-body p-4 pt-0 min-vh-50" id="dokumen-tab-content">
+                    <div class="d-flex justify-content-center align-items-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <style>
@@ -1398,7 +1409,7 @@
                                                         </div>
                                                     </div>
                                                     {{-- Remove --}}
-                                                    <form action="{{ route('programs.members.destroy', [$program, $member]) }}" method="POST" onsubmit="return confirm('Remove member?')">
+                                                    <form action="{{ route('programs.members.destroy', [$program, $member]) }}" method="POST" onsubmit="confirmSwalAction(event, this, 'Hapus Member', 'Hapus member ini dari program?')">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="btn btn-sm btn-light border p-1 px-2 text-danger">
                                                             <i class="fa-solid fa-user-minus"></i>
@@ -2325,26 +2336,60 @@
             const result = await response.json();
 
             if (result.success) {
-                if (modal) modal.hide();
+                if (modal) {
+                    modal.hide();
+                    // Extra cleanup to ensure backdrop is gone
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }
                 form.reset();
                 if (onSuccess) onSuccess(result.data);
                 // Optional: show toast/notification
                 console.log(result.message);
                 if (typeof recalculateHierarchyNumbering === 'function') recalculateHierarchyNumbering();
             } else {
-                alert(result.message || 'Terjadi kesalahan saat menyimpan data.');
+                CustomSwal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: result.message || 'Terjadi kesalahan saat menyimpan data.',
+                });
             }
         } catch (error) {
             console.error('AJAX Error:', error);
-            alert('Gagal menghubungi server.');
+            CustomSwal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Gagal menghubungi server.',
+            });
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnHtml;
         }
     }
 
+
+
+    async function confirmSwalAction(event, form, title, text) {
+        event.preventDefault();
+        const result = await ConfirmSwal.fire({
+            title: title || 'Konfirmasi',
+            text: text || 'Apakah Anda yakin ingin melanjutkan?',
+        });
+
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    }
+
     async function deleteHierarchyItem(url, confirmMsg, onSuccess) {
-        if (!confirm(confirmMsg)) return;
+        const result = await ConfirmSwal.fire({
+            title: 'Konfirmasi Hapus',
+            text: confirmMsg || 'Apakah Anda yakin ingin menghapus data ini?',
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
             const response = await fetch(url, {
@@ -2356,17 +2401,34 @@
                 }
             });
 
-            const result = await response.json();
+            const data = await response.json();
 
-            if (result.success) {
+            if (data.success) {
+                CustomSwal.fire({
+                    icon: 'success',
+                    title: 'Terhapus!',
+                    text: data.message || 'Data berhasil dihapus.',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
                 if (onSuccess) onSuccess();
                 if (typeof recalculateHierarchyNumbering === 'function') recalculateHierarchyNumbering();
             } else {
-                alert(result.message || 'Gagal menghapus data.');
+                CustomSwal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal menghapus data.',
+                });
             }
         } catch (error) {
             console.error('AJAX Delete Error:', error);
-            alert('Gagal menghubungi server.');
+            CustomSwal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Terjadi kesalahan sistem saat menghapus data.',
+            });
         }
     }
 
@@ -2392,6 +2454,19 @@
             const oldHeader = document.getElementById('program-header-content');
             if (newHeader && oldHeader) {
                 oldHeader.innerHTML = newHeader.innerHTML;
+            }
+
+            // Documentation counts update
+            const newBadge = doc.getElementById('attachment-count-badge');
+            const oldBadge = document.getElementById('attachment-count-badge');
+            if (newBadge && oldBadge) {
+                oldBadge.innerHTML = newBadge.innerHTML;
+            }
+
+            // Refresh Documentation Tab if active
+            const docTab = document.getElementById('dokumen-tab');
+            if (docTab && docTab.classList.contains('active')) {
+                if (typeof fetchAttachments === 'function') fetchAttachments();
             }
 
             // Refresh Hierarchy Container
@@ -2627,8 +2702,8 @@
                         <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. RAB Final Q1 2025" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">File <span class="text-danger">*</span></label>
-                        <input type="file" name="file" id="uploadFileInput" class="form-control form-control-sm" required
+                        <label class="form-label fw-semibold small">File <span class="text-muted fw-normal">(opsional jika hanya catatan)</span></label>
+                        <input type="file" name="file" id="uploadFileInput" class="form-control form-control-sm"
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.gif,.zip,.rar,.txt,.csv">
                         <div class="form-text" style="font-size: 0.68rem;">PDF, Word, Excel, PPT, Gambar, ZIP · Maks 20 MB</div>
                     </div>
@@ -2650,7 +2725,6 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function initSortable() {
         // 1. Sortable Sub Programs
@@ -2797,12 +2871,20 @@
                             }, 1200);
                         } else {
                             if (displayEl) displayEl.innerHTML = originalHtml;
-                            alert('Gagal menyimpan tanggal.');
+                            CustomSwal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: 'Gagal menyimpan tanggal.',
+                            });
                         }
                     })
                     .catch(function() {
                         if (displayEl) displayEl.innerHTML = originalHtml;
-                        alert('Koneksi gagal.');
+                        CustomSwal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Koneksi gagal.',
+                        });
                     });
                 }
             });
@@ -3035,7 +3117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Only load if it hasn't been loaded yet
             if (!this.hasAttribute('data-loaded')) {
-                fetch(url)
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(response => response.text())
                     .then(html => {
                         targetPane.innerHTML = html;
@@ -3094,6 +3176,95 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ===== DOCUMENTATION FILTERS & AJAX =====
+function fetchAttachments(url = null) {
+    const container = document.getElementById('dokumen-tab-content');
+    const programId = '{{ $program->id }}';
+    
+    // If url is an Event object or null, use default URL
+    if (typeof url !== 'string') {
+        url = `{{ route('programs.attachments', $program->id) }}`;
+        const params = new URLSearchParams();
+        const search = document.getElementById('att-search-filter').value;
+        const date = document.getElementById('att-date-filter').value;
+        const type = document.getElementById('att-type-filter').value;
+        
+        if (search) params.append('search', search);
+        if (date) params.append('date', date);
+        if (type) params.append('type', type);
+        
+        if (params.toString()) {
+            url += `?${params.toString()}`;
+        }
+    }
+
+    container.style.opacity = '0.5';
+    
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        container.innerHTML = html;
+        container.style.opacity = '1';
+        
+        // Handle pagination clicks
+        const paginationLinks = container.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                fetchAttachments(this.href);
+            });
+        });
+    })
+    .catch(err => {
+        console.error('Error fetching attachments:', err);
+        container.innerHTML = '<div class="alert alert-danger">Gagal memuat data lampiran.</div>';
+        container.style.opacity = '1';
+    });
+}
+
+function resetAttachmentFilters() {
+    document.getElementById('att-search-filter').value = '';
+    document.getElementById('att-date-filter').value = '';
+    document.getElementById('att-type-filter').value = '';
+    fetchAttachments();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('att-search-filter');
+    const dateInput = document.getElementById('att-date-filter');
+    const typeInput = document.getElementById('att-type-filter');
+    const docTab = document.getElementById('dokumen-tab');
+
+    if (docTab) {
+        docTab.addEventListener('shown.bs.tab', function() {
+            // Initial fetch if not loaded or always if we want fresh data
+            fetchAttachments();
+        });
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchAttachments();
+            }, 500);
+        });
+    }
+
+    if (dateInput) {
+        dateInput.addEventListener('change', fetchAttachments);
+    }
+
+    if (typeInput) {
+        typeInput.addEventListener('change', fetchAttachments);
+    }
+});
+
 // ===== ATTACHMENT MANAGEMENT =====
 let _attachCurrentType = '';
 let _attachCurrentId   = 0;
@@ -3113,9 +3284,29 @@ function openAttachmentModal(type, id, name) {
 
     document.getElementById('attachmentModalTitle').textContent = name;
 
-    // Find attachments for this entity
-    const entity = _allAttachments.find(e => e.attachable_type === type && e.attachable_id === id);
-    const attachments = entity ? entity.attachments : [];
+    // Filter _allAttachments to find all entities that are "under" this one (including self)
+    let filteredEntities = [];
+    if (type === 'sub_program') {
+        filteredEntities = _allAttachments.filter(e => e.sub_program_id === id);
+    } else if (type === 'milestone') {
+        filteredEntities = _allAttachments.filter(e => e.milestone_id === id);
+    } else if (type === 'activity') {
+        filteredEntities = _allAttachments.filter(e => e.activity_id === id);
+    } else {
+        filteredEntities = _allAttachments.filter(e => e.attachable_type === type && e.attachable_id === id);
+    }
+
+    let attachments = [];
+    filteredEntities.forEach(entity => {
+        const typeLabel = entity.attachable_type.replace('_', ' ').toUpperCase();
+        entity.attachments.forEach(a => {
+            // Add source context
+            a._sourceName = entity.name || 'Unknown';
+            a._sourceType = typeLabel;
+            attachments.push(a);
+        });
+    });
+
 
     const typeColors = {
         'RAB':      { bg: '#dbeafe', color: '#1d4ed8' },
@@ -3172,17 +3363,28 @@ function openAttachmentModal(type, id, name) {
                 <div class="d-flex flex-column gap-2">`;
             items.forEach(a => {
                 const icon = getIcon(a.mime_type);
+                const hasFile = !!a.file_path;
                 html += `<div class="d-flex align-items-center gap-3 px-3 py-2 rounded-3 border" style="background:#fafafa;">
-                    <i class="fa-solid ${icon} fs-5 flex-shrink-0"></i>
+                    <i class="fa-solid ${hasFile ? icon : 'fa-note-sticky text-warning'} fs-5 flex-shrink-0"></i>
                     <div class="flex-grow-1 min-width-0">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge rounded-pill fw-bold" style="font-size: 0.55rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 2px 6px;">${a._sourceType}</span>
+                            <span class="text-muted text-truncate fw-medium" style="font-size: 0.65rem;" title="${a._sourceName}">${a._sourceName}</span>
+                        </div>
                         <div class="fw-semibold text-dark text-truncate" style="font-size:0.82rem;">${a.name}</div>
-                        <div class="text-muted" style="font-size:0.68rem;">${a.original_filename} · ${humanSize(a.file_size)}</div>
-                        ${a.description ? `<div class="text-muted fst-italic" style="font-size:0.68rem;">${a.description}</div>` : ''}
+                        <div class="text-muted" style="font-size:0.68rem;">
+                            ${hasFile ? `${a.original_filename} · ${humanSize(a.file_size)}` : '<span class="text-warning fw-medium">Hanya Catatan</span>'}
+                        </div>
+                        ${a.description ? `<div class="text-muted fst-italic mt-1" style="font-size:0.68rem; line-height:1.2;">${a.description}</div>` : ''}
+                        <div class="text-muted mt-1 opacity-75" style="font-size:0.62rem; font-family:monospace;">
+                            ${a.created_at_formatted} : Pembuatan ${t} - ${a.name}
+                        </div>
                     </div>
                     <div class="d-flex gap-2 flex-shrink-0">
+                        ${hasFile ? `
                         <a href="/attachments/${a.id}/download" class="btn btn-sm px-2" style="background:#ede9fe; color:#6d28d9; border:1px solid #ddd6fe; font-size:0.7rem;" title="Download">
                             <i class="fa-solid fa-download"></i>
-                        </a>
+                        </a>` : ''}
                         <button type="button" class="btn btn-sm px-2" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-size:0.7rem;" title="Hapus"
                                 onclick="deleteHierarchyItem('/attachments/${a.id}', 'Hapus lampiran ini?', async () => { await refreshPageContent(); openAttachmentModal(_attachCurrentType, _attachCurrentId, _attachCurrentName); })">
                             <i class="fa-solid fa-trash"></i>
@@ -3195,9 +3397,20 @@ function openAttachmentModal(type, id, name) {
         body.innerHTML = html;
     }
 
-    const modal = new bootstrap.Modal(document.getElementById('modalAttachments'));
+    const modalEl = document.getElementById('modalAttachments');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 }
+
+// Global fix for stuck backdrops
+document.addEventListener('hidden.bs.modal', function () {
+    if (document.querySelectorAll('.modal.show').length === 0) {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+});
 
 function openUploadAttachmentModal() {
     // Close list modal first, then open upload modal
@@ -3211,8 +3424,10 @@ function openUploadAttachmentModal() {
     document.querySelectorAll('.att-type-radio').forEach(r => r.checked = false);
     document.querySelectorAll('.att-type-label').forEach(l => l.style.fontWeight = 'normal');
     setTimeout(() => {
-        new bootstrap.Modal(document.getElementById('modalUploadAttachment')).show();
-    }, 300);
+        const modalEl = document.getElementById('modalUploadAttachment');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }, 350);
 }
 
 // Radio type visual selector

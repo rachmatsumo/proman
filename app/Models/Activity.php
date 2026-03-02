@@ -90,20 +90,26 @@ class Activity extends Model
      */
     public function syncProgressFromSubActivities()
     {
-        if ($this->subActivities()->count() > 0) {
+        $count = $this->subActivities()->count();
+        if ($count > 0) {
             $avgProgress = round($this->subActivities()->avg('progress') ?? 0);
             $this->progress = $avgProgress;
-            
-            // Also update manual status if it reaches 100% or is back to 0%?
-            // User didn't explicitly ask for manual status update, but it's often linked.
-            // For now, I'll stick to updating progress as requested.
-            if ($this->progress == 100) {
-                $this->status = 'Done';
-            } elseif ($this->progress > 0 && $this->status == 'To Do') {
-                $this->status = 'On Progress';
+        } else {
+            // If all sub-activities are gone, we reset to 0 or manual state.
+            // Given the hierarchy, 0 is the safest default for a former parent.
+            $this->progress = 0;
+            if ($this->status == 'Done') {
+                $this->status = 'To Do';
             }
-            
-            $this->save();
         }
+        
+        // Ensure status reflects the new progress
+        if ($this->progress == 100) {
+            $this->status = 'Done';
+        } elseif ($this->progress > 0 && ($this->status == 'To Do' || $this->status == 'Upcoming')) {
+            $this->status = 'On Progress';
+        }
+        
+        $this->save();
     }
 }

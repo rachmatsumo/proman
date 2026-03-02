@@ -333,6 +333,7 @@
     }
 </style>
 
+
 <script>
     function getAgendaModal() {
         var el = document.getElementById('agendaModal');
@@ -394,9 +395,16 @@
         getAgendaModal().show();
     }
 
-    function deleteAgenda() {
+    async function deleteAgenda() {
         const id = document.getElementById('agenda-id').value;
-        if (!id || !confirm('Are you sure you want to delete this agenda?')) return;
+        if (!id) return;
+
+        const result = await ConfirmSwal.fire({
+            title: 'Konfirmasi Hapus',
+            text: 'Apakah Anda yakin ingin menghapus agenda ini?',
+        });
+
+        if (!result.isConfirmed) return;
 
         fetch(`{{ url("agendas") }}/${id}`, {
             method: 'DELETE',
@@ -410,7 +418,11 @@
             if(data.success) {
                 location.reload();
             } else {
-                alert('Error: ' + data.message);
+                CustomSwal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Error: ' + data.message,
+                });
             }
         })
         .catch(err => console.error(err));
@@ -419,7 +431,11 @@
     function copyWAReport() {
         const agendas = {!! json_encode($agendas) !!};
         if (agendas.length === 0) {
-            alert('No agenda items for this date.');
+            CustomSwal.fire({
+                icon: 'info',
+                title: 'Informasi',
+                text: 'No agenda items for this date.',
+            });
             return;
         }
 
@@ -448,7 +464,15 @@
         report += `Terima kasih🙏`;
 
         navigator.clipboard.writeText(report).then(() => {
-            alert('Report copied to clipboard! You can now paste it directly into WhatsApp.');
+            CustomSwal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Report copied to clipboard!',
+                timer: 3000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
         });
     }
 
@@ -474,7 +498,11 @@
             if(data.success) {
                 location.reload();
             } else {
-                alert('Validation error: ' + JSON.stringify(data.errors));
+                CustomSwal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Validation error: ' + JSON.stringify(data.errors),
+                });
             }
         })
         .catch(err => console.error(err));

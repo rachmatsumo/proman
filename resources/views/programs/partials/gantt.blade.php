@@ -143,6 +143,18 @@
 <script>
 (function () {
     'use strict';
+ 
+    // Ensure CustomSwal is available (theme matching show.blade.php)
+    const CustomSwal = window.CustomSwal || Swal.mixin({
+        customClass: {
+            confirmButton: 'btn btn-primary px-4 py-2 fw-semibold rounded-pill mx-2 shadow-sm',
+            cancelButton:  'btn btn-light px-4 py-2 fw-semibold rounded-pill mx-2 border shadow-sm',
+            title:         'fw-bold text-dark fs-5',
+            popup:         'rounded-4 border-0 shadow-lg',
+            actions:       'gap-2',
+        },
+        buttonsStyling: false,
+    });
 
     // Flatpickr range picker for the Gantt update modal
     var ganttDateFp = flatpickr('#gantt-date-range-picker', {
@@ -394,7 +406,11 @@
         var csrfToken = document.querySelector('meta[name="csrf-token"]');
         if (!csrfToken) {
             console.error("CSRF token meta tag not found!");
-            alert("Security Error: CSRF token missing.");
+            CustomSwal.fire({
+                icon: 'error',
+                title: 'Security Error',
+                text: 'CSRF token missing.',
+            });
             return Promise.reject("CSRF missing");
         }
 
@@ -506,12 +522,20 @@
                     }
                     $modal.hide();
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to update'));
+                    CustomSwal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: (data.message || 'Failed to update'),
+                    });
                 }
             })
             .catch(function(err) {
                 console.error(err);
-                alert('Connection error');
+                CustomSwal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Connection error',
+                });
             })
             .finally(function() {
                 btnText.textContent = originalText;

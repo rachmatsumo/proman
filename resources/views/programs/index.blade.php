@@ -75,7 +75,7 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                                         <li>
-                                            <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="return confirm('Hapus program ini secara permanen?')">
+                                            <form action="{{ route('programs.destroy', $program->id) }}" method="POST" onsubmit="confirmDelete(event, this)">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="dropdown-item text-danger d-flex align-items-center">
                                                     <i class="fa-solid fa-trash-can me-2"></i> Delete Program
@@ -108,6 +108,20 @@
 
 @push('scripts')
 <script>
+
+
+    async function confirmDelete(event, form) {
+        event.preventDefault();
+        const result = await ConfirmSwal.fire({
+            title: 'Konfirmasi Hapus',
+            text: 'Hapus program ini secara permanen?',
+        });
+
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    }
+
     document.getElementById('programSearch').addEventListener('keyup', function() {
         const query = this.value.toLowerCase();
         const rows = document.querySelectorAll('.program-row');

@@ -96,6 +96,54 @@ class ProgramController extends Controller
         return redirect()->route('programs.show', $id);
     }
 
+    public function attachments(Request $request, string $id)
+    {
+        $program = Program::with(['subPrograms.milestones.activities'])->findOrFail($id);
+        
+        $subIds = $program->subPrograms->pluck('id')->toArray();
+        $msIds  = $program->subPrograms->flatMap->milestones->pluck('id')->toArray();
+        $actIds = $program->subPrograms->flatMap->milestones->flatMap->activities->pluck('id')->toArray();
+        $subActIds = $program->subPrograms->flatMap->milestones->flatMap->activities->flatMap->subActivities->pluck('id')->toArray();
+
+        $query = \App\Models\Attachment::where(function($q) use ($subIds, $msIds, $actIds, $subActIds) {
+                $q->where(fn($sq) => $sq->where('attachable_type', 'App\Models\SubProgram')->whereIn('attachable_id', $subIds))
+                  ->orWhere(fn($sq) => $sq->where('attachable_type', 'App\Models\Milestone')->whereIn('attachable_id', $msIds))
+                  ->orWhere(fn($sq) => $sq->where('attachable_type', 'App\Models\Activity')->whereIn('attachable_id', $actIds))
+                  ->orWhere(fn($sq) => $sq->where('attachable_type', 'App\Models\SubActivity')->whereIn('attachable_id', $subActIds));
+            });
+
+        if ($request->search) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('name', 'like', "%$s%")
+                  ->orWhere('description', 'like', "%$s%")
+                  ->orWhere('original_filename', 'like', "%$s%");
+            });
+        }
+
+        if ($request->date) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        if ($request->type) {
+            if ($request->type === 'file') {
+                $query->whereNotNull('file_path');
+            } elseif ($request->type === 'note') {
+                $query->whereNull('file_path');
+            } else {
+                $query->where('type', $request->type);
+            }
+        }
+
+        $attachments = $query->latest()->paginate(12);
+
+        if ($request->ajax()) {
+            return view('programs.partials.attachments_list', compact('attachments'))->render();
+        }
+
+        return redirect()->route('programs.show', $id);
+    }
+
     public function edit(string $id)
     {
         $program = Program::findOrFail($id);

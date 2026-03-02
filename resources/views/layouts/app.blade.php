@@ -14,6 +14,7 @@
     
     <!-- Alpine.js for some interactivity if needed -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @stack('styles')
     <style>
@@ -89,6 +90,20 @@
                 backdrop-filter: blur(4px);
                 z-index: 1030;
             }
+        }
+        /* SweetAlert2 Layout Fix */
+        html.swal2-shown, 
+        body.swal2-shown,
+        body {
+            padding-right: 0 !important;
+        }
+        html.swal2-shown,
+        body.swal2-shown {
+            height: 100% !important;
+            overflow: hidden !important;
+        }
+        .swal2-container {
+            z-index: 9999 !important;
         }
     </style>
 </head>
@@ -253,6 +268,37 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global SweetAlert2 Mixins for Premium Experience
+        const CustomSwal = Swal.mixin({
+            customClass: {
+                confirmButton: 'btn btn-primary px-4 py-2 fw-semibold rounded-pill mx-2 shadow-sm',
+                cancelButton:  'btn btn-light px-4 py-2 fw-semibold rounded-pill mx-2 border shadow-sm',
+                title:         'fw-bold text-dark fs-5',
+                popup:         'rounded-4 border-0 shadow-lg',
+                actions:       'gap-2',
+            },
+            buttonsStyling: false,
+            scrollbarPadding: false,
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown animate__faster'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp animate__faster'
+            }
+        });
+
+        const ConfirmSwal = CustomSwal.mixin({
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-danger px-4 py-2 fw-semibold rounded-pill mx-2 shadow-sm',
+                cancelButton:  'btn btn-light px-4 py-2 fw-semibold rounded-pill mx-2 border shadow-sm',
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

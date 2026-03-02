@@ -22,7 +22,7 @@ class Attachment extends Model
         'description',
     ];
 
-    protected $appends = ['file_size_human', 'icon_class', 'download_url'];
+    protected $appends = ['file_size_human', 'icon_class', 'download_url', 'created_at_formatted'];
 
     /**
      * Polymorphic: belongs to SubProgram, Milestone, or Activity
@@ -38,6 +38,7 @@ class Attachment extends Model
     public function getFileSizeHumanAttribute(): string
     {
         $bytes = $this->file_size;
+        if ($bytes === null) return '0 B';
         if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
         if ($bytes >= 1024)    return round($bytes / 1024, 1) . ' KB';
         return $bytes . ' B';
@@ -63,7 +64,16 @@ class Attachment extends Model
      */
     public function getDownloadUrlAttribute(): string
     {
+        if (!$this->file_path) return '#';
         return route('attachments.download', $this->id);
+    }
+
+    /**
+     * Formatted created at date.
+     */
+    public function getCreatedAtFormattedAttribute(): string
+    {
+        return $this->created_at->format('Y-m-d');
     }
 
     /**
