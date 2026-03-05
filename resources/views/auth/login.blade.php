@@ -9,10 +9,10 @@
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            --glass-bg: rgba(255, 255, 255, 0.9);
+            --glass-bg: rgba(255, 255, 255, 0.95);
         }
         body {
-            background: #f8fafc;
+            background: #fff;
             height: 100vh;
             display: flex;
             align-items: center;
@@ -21,40 +21,70 @@
             margin: 0;
             overflow: hidden;
         }
-        .auth-background {
-            position: fixed;
-            top: 0;
-            left: 0;
+        .login-container {
+            display: flex;
             width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 100% 100%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
-            z-index: -1;
+            height: 100vh;
         }
-        .auth-card {
-            width: 100%;
-            max-width: 440px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 2rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-            padding: 3rem;
-            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        .login-visual {
+            flex: 1.2;
+            position: relative;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 4rem;
+            color: white;
+            overflow: hidden;
         }
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .login-visual::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("{{ asset('img/login-bg.png') }}") center center / cover no-repeat;
+            opacity: 0.6;
+            z-index: 1;
         }
-        .brand-logo {
-            width: 60px;
-            height: 60px;
-            background: var(--primary-gradient);
-            border-radius: 1.25rem;
+        .login-visual::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.2) 60%, transparent 100%);
+            z-index: 2;
+        }
+        .visual-content {
+            position: relative;
+            z-index: 3;
+            max-width: 600px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-form-side {
+            flex: 1;
+            background: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1.5rem;
+            padding: 2rem;
+            z-index: 4;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 2rem;
+        }
+        .brand-logo {
+            width: 52px;
+            height: 52px;
+            background: var(--primary-gradient);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
             box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
         }
         .form-control {
@@ -93,72 +123,83 @@
         .auth-link:hover {
             text-decoration: underline;
         }
-        .divider {
-            height: 1px;
-            background: #e2e8f0;
-            margin: 2rem 0;
-            position: relative;
-        }
-        .divider::after {
-            content: 'OR';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--glass-bg);
-            padding: 0 1rem;
-            color: #94a3b8;
-            font-size: 0.75rem;
-            font-weight: 600;
+        
+        @media (max-width: 991px) {
+            .login-visual {
+                display: none;
+            }
+            body {
+                background: #f8fafc;
+            }
+            .auth-card {
+                background: white;
+                border-radius: 2rem;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+                padding: 3rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="auth-background"></div>
-    <div class="auth-card">
-        <div class="text-center mb-4">
-            <div class="brand-logo">
-                <!-- <i class="fa-solid fa-layer-group text-white fs-4"></i> -->
-                 <img src="{{ asset('img/proman-logo.png') }}" alt="Logo" class="img-fluid">
+    <div class="login-container">
+        <!-- Visual Side -->
+        <div class="login-visual">
+            <div class="visual-content">
+                <div class="mb-4">
+                    <span class="badge bg-primary px-3 py-2 rounded-pill mb-3" style="background: var(--primary-gradient) !important;">New Experience</span>
+                    <h1 class="display-4 fw-bold mb-3">Manage Better with ProMan</h1>
+                    <p class="fs-5 opacity-75 mb-0">Solusi manajemen proyek terintegrasi untuk tim Anda. Kelola program, proyek, dan agenda dengan jauh lebih mudah.</p>
+                </div>
             </div>
-            <h2 class="fw-bold text-dark">Welcome Back</h2>
-            <p class="text-muted small">Please enter your details to sign in</p>
         </div>
 
-        <form method="POST" action="{{ route('login') }}">
-            @csrf
-            <div class="mb-3">
-                <label class="form-label small fw-semibold text-muted">Email Address</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0" style="border-radius: 0.75rem 0 0 0.75rem;"><i class="fa-regular fa-envelope text-muted"></i></span>
-                    <input type="email" name="email" class="form-control border-start-0" placeholder="name@company.com" value="{{ old('email') }}" required autofocus style="border-radius: 0 0.75rem 0.75rem 0;">
+        <!-- Form Side -->
+        <div class="login-form-side">
+            <div class="auth-card">
+                <div class="mb-4">
+                    <div class="brand-logo">
+                         <img src="{{ asset('img/proman-logo.png') }}" alt="Logo" class="img-fluid p-2">
+                    </div>
+                    <h2 class="fw-bold text-dark mb-1">Welcome Back</h2>
+                    <p class="text-muted small">Enter your credentials to access your workspace</p>
                 </div>
-                @error('email')
-                    <div class="text-danger small mt-1">{{ $message }}</div>
-                @enderror
-            </div>
 
-            <div class="mb-3">
-                <label class="form-label small fw-semibold text-muted">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0" style="border-radius: 0.75rem 0 0 0.75rem;"><i class="fa-solid fa-lock text-muted"></i></span>
-                    <input type="password" name="password" class="form-control border-start-0" placeholder="••••••••" required style="border-radius: 0 0.75rem 0.75rem 0;">
+                <form method="POST" action="{{ route('login') }}">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0" style="border-radius: 0.75rem 0 0 0.75rem;"><i class="fa-regular fa-envelope text-muted"></i></span>
+                            <input type="email" name="email" class="form-control border-start-0" placeholder="name@company.com" value="{{ old('email') }}" required autofocus style="border-radius: 0 0.75rem 0.75rem 0;">
+                        </div>
+                        @error('email')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0" style="border-radius: 0.75rem 0 0 0.75rem;"><i class="fa-solid fa-lock text-muted"></i></span>
+                            <input type="password" name="password" class="form-control border-start-0" placeholder="••••••••" required style="border-radius: 0 0.75rem 0.75rem 0;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="remember" id="remember">
+                            <label class="form-check-label small text-muted" for="remember">Remember me</label>
+                        </div>
+                        <a href="#" class="small auth-link">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-auth">Sign In</button>
+                </form>
+
+                <div class="text-center mt-5">
+                    <p class="text-muted small mb-0">Don't have an account? <a href="{{ route('register') }}" class="auth-link">Create Account</a></p>
                 </div>
             </div>
-
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="remember" id="remember">
-                    <label class="form-check-label small text-muted" for="remember">Remember me</label>
-                </div>
-                <a href="#" class="small auth-link">Forgot password?</a>
-            </div>
-
-            <button type="submit" class="btn btn-auth">Sign In</button>
-        </form>
-
-        <div class="text-center mt-4">
-            <p class="text-muted small mb-0">Don't have an account? <a href="{{ route('register') }}" class="auth-link">Create Account</a></p>
         </div>
     </div>
 </body>
