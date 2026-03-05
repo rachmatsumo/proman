@@ -195,10 +195,7 @@
 
                     <button type="submit" class="btn btn-auth">Sign In</button>
                 </form>
-
-                <!-- <div class="text-center mt-5">
-                    <p class="text-muted small mb-0">Don't have an account? <a href="{{ route('register') }}" class="auth-link">Create Account</a></p>
-                </div> -->
+ 
             </div>
         </div>
     </div>
