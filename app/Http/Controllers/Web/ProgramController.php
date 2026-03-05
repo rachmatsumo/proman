@@ -312,6 +312,201 @@ class ProgramController extends Controller
         return view('programs.partials.gantt', compact('program', 'ganttTasksJson'));
     }
 
+    public function partialSCurve(string $id)
+    {
+        $program = Program::with(['subPrograms.milestones.activities.subActivities'])->findOrFail($id);
+        
+        // 1. Determine Project Range
+        $start = $program->start_date;
+        $end = $program->end_date;
+
+        // Collect all activities to find dates if program dates are missing
+        $allActivities = $program->subPrograms->flatMap->milestones->flatMap->activities;
+        
+        if (!$start || !$end) {
+            foreach($allActivities as $act) {
+                if ($act->start_date && (!$start || $act->start_date < $start)) $start = $act->start_date;
+                if ($act->end_date && (!$end || $act->end_date > $end)) $end = $act->end_date;
+            }
+        }
+        
+        if (!$start) $start = now()->startOfMonth();
+        if (!$end) $end = now()->endOfMonth();
+        if ($end < $start) $end = $start->copy()->addMonth();
+
+        // 2. Calculate Global Weights for each Activity
+        $activityWeights = [];
+        $subs = $program->subPrograms;
+        $subCount = $subs->count();
+        $allSubsHaveBobot = $subs->isNotEmpty() && $subs->every(fn($s) => $s->bobot !== null);
+        
+        foreach ($subs as $sub) {
+            $subW = $allSubsHaveBobot ? ($sub->bobot / 100) : (1 / max(1, $subCount));
+            
+            $milestones = $sub->milestones->where('type', '!=', 'divider');
+            $msCount = $milestones->count();
+            $allMsHaveBobot = $milestones->isNotEmpty() && $milestones->every(fn($m) => $m->bobot !== null);
+            
+            foreach ($milestones as $ms) {
+                $msW = $allMsHaveBobot ? ($ms->bobot / 100) : (1 / max(1, $msCount));
+                
+                $acts = $ms->activities;
+                $actCount = $acts->count();
+                // Activities don't usually have individual weights in this UI, they are averaged.
+                // So ActWeight = 1 / actCount
+                
+                foreach ($acts as $act) {
+                    $globalW = $subW * $msW * (1 / max(1, $actCount));
+                    $activityWeights[$act->id] = $globalW;
+                }
+            }
+        }
+
+        // 3. Prepare Time-series Labels (Weekly for Table)
+        $labels = [];
+        $current = $start->copy()->startOfDay();
+        $limit = $end->copy()->endOfDay();
+        
+        $daysDiff = $start->diffInDays($end);
+        $step = 1;
+        if ($daysDiff > 100) $step = 7; // Weekly points for chart if long
+        
+        $chartDates = [];
+        while ($current <= $limit) {
+            $labels[] = $current->format('d M y');
+            $chartDates[] = $current->copy();
+            $current->addDays($step);
+        }
+        if (end($chartDates)->format('Y-m-d') !== $limit->format('Y-m-d')) {
+            $labels[] = $limit->format('d M y');
+            $chartDates[] = $limit->copy();
+        }
+
+        // 3.1 Prepare Weekly Periods for Table
+        $weeklyPeriods = [];
+        $curr = $start->copy()->startOfWeek(\Carbon\Carbon::MONDAY);
+        while ($curr <= $limit) {
+            $wStart = $curr->copy();
+            $wEnd = $curr->copy()->endOfWeek(\Carbon\Carbon::SUNDAY);
+            
+            // Limit to actual project range
+            $actualStart = $wStart->lt($start) ? $start : $wStart;
+            $actualEnd = $wEnd->gt($limit) ? $limit : $wEnd;
+            
+            if ($actualStart <= $actualEnd) {
+                $weeklyPeriods[] = [
+                    'start' => $actualStart->copy(),
+                    'end' => $actualEnd->copy(),
+                    'label' => 'W' . $curr->weekOfMonth,
+                    'month_label' => $actualStart->translatedFormat('F Y'),
+                ];
+            }
+            $curr->addWeek();
+        }
+
+        // 4. Calculate Planned Value (PV) & Table Data
+        $pvData = [];
+        foreach ($chartDates as $date) {
+            $totalPV = 0;
+            foreach ($allActivities as $act) {
+                if (!$act->start_date || !$act->end_date) continue;
+                $weight = $activityWeights[$act->id] ?? 0;
+                $p = 0;
+                if ($date >= $act->end_date) $p = 100;
+                elseif ($date >= $act->start_date) {
+                    $totalD = max(1, $act->start_date->diffInDays($act->end_date));
+                    $elapsed = $act->start_date->diffInDays($date);
+                    $p = ($elapsed / $totalD) * 100;
+                }
+                $totalPV += ($p * $weight);
+            }
+            $pvData[] = round($totalPV, 2);
+        }
+
+        // Calculate periodical weight distribution for each activity
+        $tableHierarchy = [];
+        foreach ($subs as $sub) {
+            $subData = [
+                'name' => $sub->name,
+                'weight' => $allSubsHaveBobot ? $sub->bobot : (1 / max(1, $subCount)) * 100,
+                'milestones' => []
+            ];
+
+            $milestones = $sub->milestones->where('type', '!=', 'divider');
+            $msCount = $milestones->count();
+            $allMsHaveBobot = $milestones->isNotEmpty() && $milestones->every(fn($m) => $m->bobot !== null);
+
+            foreach ($milestones as $ms) {
+                $msW = $allMsHaveBobot ? ($ms->bobot / 100) : (1 / max(1, $msCount));
+                $msData = [
+                    'name' => $ms->name,
+                    'weight' => $msW * 100,
+                    'activities' => []
+                ];
+
+                $acts = $ms->activities;
+                $actCount = $acts->count();
+                foreach ($acts as $act) {
+                    $globalW = $activityWeights[$act->id] ?? 0;
+                    $actPeriods = [];
+                    foreach ($weeklyPeriods as $wp) {
+                        // Days of this activity in this week
+                        $overlapStart = $act->start_date->gt($wp['start']) ? $act->start_date : $wp['start'];
+                        $overlapEnd = $act->end_date->lt($wp['end']) ? $act->end_date : $wp['end'];
+                        
+                        $val = 0;
+                        if ($overlapStart <= $overlapEnd) {
+                            $overlapDays = $overlapStart->diffInDays($overlapEnd) + 1;
+                            $totalActDays = $act->start_date->diffInDays($act->end_date) + 1;
+                            $val = ($overlapDays / $totalActDays) * ($globalW * 100);
+                        }
+                        $actPeriods[] = round($val, 3);
+                    }
+
+                    $msData['activities'][] = [
+                        'name' => $act->name,
+                        'start' => $act->start_date,
+                        'end' => $act->end_date,
+                        'duration' => $act->start_date->diffInDays($act->end_date) + 1,
+                        'weight' => $globalW * 100,
+                        'period_values' => $actPeriods
+                    ];
+                }
+                $subData['milestones'][] = $msData;
+            }
+            $tableHierarchy[] = $subData;
+        }
+
+        // 5. Calculate Actual Value (AV) - Using Logs
+        $actIds = $allActivities->pluck('id')->toArray();
+        $logs = \App\Models\ActivityLog::where('loggable_type', 'App\Models\Activity')
+            ->whereIn('loggable_id', $actIds)
+            ->where('action', 'updated')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->groupBy('loggable_id');
+
+        $avData = [];
+        $today = now();
+        foreach ($chartDates as $date) {
+            if ($date > $today && $date->diffInDays($today) > 0) break;
+            $totalAV = 0;
+            foreach ($allActivities as $act) {
+                $weight = $activityWeights[$act->id] ?? 0;
+                $actLogs = $logs->get($act->id);
+                $progAt = 0;
+                if ($actLogs) {
+                    $l = $actLogs->filter(fn($l) => $l->created_at <= $date->copy()->endOfDay())->last();
+                    if ($l) $progAt = $l->new_data['progress'] ?? 0;
+                } elseif ($date->isToday()) $progAt = $act->progress;
+                $totalAV += ($progAt * $weight);
+            }
+            $avData[] = round($totalAV, 2);
+        }
+
+        return view('programs.partials.s_curve', compact('program', 'labels', 'pvData', 'avData', 'tableHierarchy', 'weeklyPeriods'));
+    }
+
     public function partialCalendar(string $id)
     {
         $program = Program::findOrFail($id);

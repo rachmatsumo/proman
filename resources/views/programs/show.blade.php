@@ -453,6 +453,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab text-nowrap" id="scurve-tab" data-bs-toggle="pill" data-bs-target="#scurve" type="button" role="tab" aria-controls="scurve" aria-selected="false" data-url="{{ route('programs.partial-s-curve', $program->id) }}" style="transition: all 0.2s;">
+                    <i class="fa-solid fa-chart-line"></i> S-Curve
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link fw-semibold fs-sm px-4 py-2 rounded-pill d-flex align-items-center gap-2 ajax-tab text-nowrap" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false" data-url="{{ route('programs.partial-calendar', $program->id) }}" style="transition: all 0.2s;">
                     <i class="fa-solid fa-calendar-days"></i> Calendar
                 </button>
@@ -1233,6 +1238,15 @@
 
         {{-- TAB: TIMELINE (AJAX) --}}
         <div class="tab-pane fade" id="timeline" role="tabpanel" aria-labelledby="timeline-tab">
+            <div class="d-flex justify-content-center align-items-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- TAB: S-CURVE (AJAX) --}}
+        <div class="tab-pane fade" id="scurve" role="tabpanel" aria-labelledby="scurve-tab">
             <div class="d-flex justify-content-center align-items-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>

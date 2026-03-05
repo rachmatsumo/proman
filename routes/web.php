@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::get('programs/{program}/partial-calendar', [ProgramController::class, 'partialCalendar'])->name('programs.partial-calendar');
     Route::get('programs/{program}/attachments', [ProgramController::class, 'attachments'])->name('programs.attachments');
     Route::get('programs/{program}/history', [ProgramController::class, 'history'])->name('programs.history');
+    Route::get('programs/{program}/partial-s-curve', [ProgramController::class, 'partialSCurve'])->name('programs.partial-s-curve');
     Route::get('programs/{program}/export-excel', [ProgramController::class, 'exportExcel'])->name('programs.export-excel');
     Route::get('programs/{program}/export-pdf', [ProgramController::class, 'exportPdf'])->name('programs.export-pdf');
 
