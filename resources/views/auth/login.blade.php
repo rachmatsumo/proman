@@ -190,15 +190,15 @@
                             <input class="form-check-input" type="checkbox" name="remember" id="remember">
                             <label class="form-check-label small text-muted" for="remember">Remember me</label>
                         </div>
-                        <a href="#" class="small auth-link">Forgot password?</a>
+                        <!-- <a href="#" class="small auth-link">Forgot password?</a> -->
                     </div>
 
                     <button type="submit" class="btn btn-auth">Sign In</button>
                 </form>
 
-                <div class="text-center mt-5">
+                <!-- <div class="text-center mt-5">
                     <p class="text-muted small mb-0">Don't have an account? <a href="{{ route('register') }}" class="auth-link">Create Account</a></p>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
