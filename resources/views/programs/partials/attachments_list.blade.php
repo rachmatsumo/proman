@@ -4,7 +4,7 @@
         <p class="text-muted fw-semibold">Tidak ditemukan lampiran yang sesuai dengan filter.</p>
     </div>
 @else
-    <div class="row g-3 w-100">
+    <div class="row g-3 w-100 py-3">
         @foreach($attachments as $att)
         @php 
             $tc = \App\Models\Attachment::typeColor($att->type); 
@@ -43,11 +43,11 @@
                                 </span>
                                 <span class="text-muted" style="font-size: 0.65rem;">{{ $att->file_path ? $att->file_size_human : 'Hanya Catatan' }}</span>
                             </div>
-                            <p class="text-muted small mb-0 flex-grow-1 text-truncate" style="font-size: 0.7rem;" title="{{ $att->file_path ? $att->original_filename : 'Catatan Lampiran' }}">{{ $att->file_path ? $att->original_filename : 'Catatan Lampiran' }}</p>
+                            <!-- <p class="text-muted small mb-0 flex-grow-1 text-truncate" style="font-size: 0.7rem;" title="{{ $att->file_path ? $att->original_filename : 'Catatan Lampiran' }}">{{ $att->file_path ? $att->original_filename : 'Catatan Lampiran' }}</p> -->
                         </div>
                     </div>
                     @if($att->description)
-                        <p class="text-muted fst-italic mb-3 px-2 py-1 rounded-2" style="font-size: 0.7rem; background: #f1f5f9;">{{ Str::limit($att->description, 60) }}</p>
+                        <p class="text-muted fst-italic mb-3 px-2 py-1 rounded-2 text-truncate" style="font-size: 0.7rem; background: #f1f5f9;">{{ Str::limit($att->description, 60) }}</p>
                     @endif
                     <div class="d-flex gap-2 mt-auto pt-2 border-top border-light-subtle">
                         @if($att->file_path)

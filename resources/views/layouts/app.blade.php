@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'ProMan - Project Management')</title>
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="@yield('title', 'ProMan - Project Management')">
+    <meta property="og:description" content="Solusi manajemen proyek terintegrasi untuk tim Anda. Kelola program, proyek, dan agenda dengan mudah di ProMan.">
+    <meta property="og:image" content="{{ asset('img/thumbnail.png') }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="@yield('title', 'ProMan - Project Management')">
+    <meta property="twitter:description" content="Solusi manajemen proyek terintegrasi untuk tim Anda. Kelola program, proyek, dan agenda dengan mudah di ProMan.">
+    <meta property="twitter:image" content="{{ asset('img/thumbnail.png') }}">
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('img/proman-fav.png') }}">
     <!-- Bootstrap CSS -->
@@ -15,6 +30,8 @@
     <!-- Alpine.js for some interactivity if needed -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!--  -->
 
     @stack('styles')
     <style>
@@ -198,7 +215,7 @@
                         @if(Auth::user()->avatar)
                             <img src="{{ asset(Auth::user()->avatar) }}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
                         @else
-                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold" style="min-width: 32px; min-height: 32px; font-size: 0.8rem;">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         @endif
